@@ -3,12 +3,19 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 from app.parser.ttr_parser import TTRParser
+from app.core.vectorizer import BoardVectorizer
 from app.index.kdtree_index import grounding_index
+from app.core.ollama_client import ollama_client
 
 router = APIRouter()
 
 class GridPayload(BaseModel):
     grid: List[List[int]] = Field(..., description="10x40 integer matrix representing playfield blocks (0=empty, 1=filled)")
+
+class AdvicePayload(BaseModel):
+    grid: List[List[int]] = Field(..., description="10x40 integer matrix representing playfield blocks (0=empty, 1=filled)")
+    active_piece: str = Field("I", description="Standard active held piece tetromino symbol")
+    queue: List[str] = Field(..., description="List of upcoming pieces, e.g. ['Z', 'L', 'S']")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -83,3 +90,45 @@ def query_recommendation(payload: GridPayload):
             detail=f"An error occurred during KDTree match search: {str(e)}"
         )
 
+
+@router.post("/query-advice")
+def query_advice(payload: AdvicePayload):
+    """
+    Retrieve real-time tactical Gemma advice and nearest-neighbor Grandmaster anchors based on active gameplay frames.
+    """
+    grid = payload.grid
+    if len(grid) != 40 or any(len(row) != 10 for row in grid):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid grid dimension. Grid must be exactly 10 columns by 40 rows."
+        )
+        
+    try:
+        # 1. Vectorize playfield
+        profile = BoardVectorizer.vectorize_board(grid)
+        
+        # 2. Query nearest Grandmaster anchor from KDTree
+        matched = grounding_index.query_nearest_grandmaster(grid)
+        anchor = matched["nearest_match"]
+        
+        # 3. Query Gemma spatial advice from OllamaClient
+        advice_result = ollama_client.query_spatial_advice(
+            heights=profile["column_heights"],
+            bumpiness=profile["bumpiness"],
+            holes_count=profile["holes_count"],
+            holes=profile["holes"],
+            active_piece=payload.active_piece,
+            queue=payload.queue,
+            grandmaster_anchor=anchor
+        )
+        
+        return {
+            "query_profile": matched["query_profile"],
+            "nearest_match": anchor,
+            "tactical_spotter": advice_result
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during integrated advice processing: {str(e)}"
+        )
