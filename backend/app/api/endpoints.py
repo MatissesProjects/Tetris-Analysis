@@ -10,6 +10,8 @@ from app.core.finesse import FinesseEvaluator
 from app.core.speed import PacingEvaluator
 from app.core.lookahead import LookaheadPlanner
 from app.core.eltetris import ElTetrisEvaluator
+from app.core.attack import AttackCalculator
+from app.core.openings import OpeningMatcher
 
 router = APIRouter()
 
@@ -37,6 +39,15 @@ class PacingPayload(BaseModel):
 class LookaheadPayload(BaseModel):
     grid_heights: List[int] = Field(..., description="List of 10 active column heights")
     queue: List[str] = Field(..., description="List of upcoming pieces in the lookahead queue")
+
+class AttackPayload(BaseModel):
+    clear_type: str = Field(..., description="Line clear type, e.g. single, quad, tspin_double")
+    b2b_chain_length: int = Field(0, description="Active Back-to-Back chain length")
+    combo_count: int = Field(0, description="Current combo counter")
+
+class OpeningPayload(BaseModel):
+    pieces_placed: List[str] = Field(..., description="Tetromino shapes in order of placement")
+    columns_placed: List[int] = Field(..., description="Landing columns in order of placement")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -240,4 +251,39 @@ def check_fitness(payload: GridPayload):
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred during ElTetris board evaluation: {str(e)}"
+        )
+
+
+@router.post("/check-attack")
+def check_attack(payload: AttackPayload):
+    """
+    Evaluate attack power, B2B chain multipliers, and combo modifiers under canonical TETR.IO rules.
+    """
+    try:
+        return AttackCalculator.evaluate_clear(
+            clear_type=payload.clear_type,
+            b2b_chain_length=payload.b2b_chain_length,
+            combo_count=payload.combo_count
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during attack damage analysis: {str(e)}"
+        )
+
+
+@router.post("/check-opening")
+def check_opening(payload: OpeningPayload):
+    """
+    Match placement sequences of the first bag against classic openings like TKI 3, DT Cannon, or MKO.
+    """
+    try:
+        return OpeningMatcher.match_opening(
+            pieces_placed=payload.pieces_placed,
+            columns_placed=payload.columns_placed
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during opening match evaluation: {str(e)}"
         )
