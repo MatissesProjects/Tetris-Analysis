@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis-Tetris HUD</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="hud-container">
+    <header class="hud-header">
+      <img src="assets/logo.png" alt="Aegis Logo" class="hud-logo">
+      <div class="hud-title-block">
+        <h1>AEGIS</h1>
+        <p>Tetris Spatial Analyzer</p>
+      </div>
+    </header>
+
+    <div class="hud-card connection-status">
+      <div class="status-indicator">
+        <span class="status-dot disconnected" id="statusDot"></span>
+        <span class="status-text" id="statusText">OFFLINE (WS)</span>
+      </div>
+      <button class="btn btn-connect" id="btnConnect">CONNECT ENGINE</button>
+    </div>
+
+    <section class="hud-section">
+      <div class="section-title">TRAINING OVERLAYS</div>
+      
+      <div class="control-row">
+        <div class="control-info">
+          <span class="control-label">Lookahead Mask</span>
+          <span class="control-desc">Overlay playfield blocker</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="chkMask">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="control-row">
+        <div class="control-info">
+          <span class="control-label">Mask Mode</span>
+          <span class="control-desc">Ghost vs Complete Blindness</span>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-tab active" id="btnGhost">GHOST</button>
+          <button class="btn btn-tab" id="btnBlind">BLIND</button>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="control-info">
+          <span class="control-label">3-Bag Peek Heuristic</span>
+          <span class="control-desc">Flash 100ms on 3 clean placements</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="chkHeuristic" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="hud-section">
+      <div class="section-title">CALIBRATION</div>
+      
+      <div class="control-row">
+        <div class="control-info">
+          <span class="control-label">Position Grid Overlay</span>
+          <span class="control-desc">Unlock to drag and resize mask</span>
+        </div>
+        <button class="btn btn-outline" id="btnCalibrate">CALIBRATE GRID</button>
+      </div>
+    </section>
+
+    <footer class="hud-footer">
+      <span class="version">AEGIS-CORE v1.0.0</span>
+      <span class="system-ready">SYSTEM ACTIVE</span>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
