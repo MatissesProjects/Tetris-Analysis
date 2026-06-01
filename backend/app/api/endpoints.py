@@ -8,6 +8,7 @@ from app.index.kdtree_index import grounding_index
 from app.core.ollama_client import ollama_client
 from app.core.finesse import FinesseEvaluator
 from app.core.speed import PacingEvaluator
+from app.core.lookahead import LookaheadPlanner
 
 router = APIRouter()
 
@@ -31,6 +32,10 @@ class PacingPayload(BaseModel):
     drop_time_ms: float = Field(..., description="Timestamp in ms when piece dropped")
     key_count: int = Field(..., description="Total keys recorded for placement")
     finesse_faults: int = Field(0, description="Finesse faults recorded (0 or 1)")
+
+class LookaheadPayload(BaseModel):
+    grid_heights: List[int] = Field(..., description="List of 10 active column heights")
+    queue: List[str] = Field(..., description="List of upcoming pieces in the lookahead queue")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -185,4 +190,27 @@ def check_pacing(payload: PacingPayload):
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred during speed pacing evaluation: {str(e)}"
+        )
+
+
+@router.post("/query-lookahead")
+def query_lookahead(payload: LookaheadPayload):
+    """
+    Generate an optimal 5-piece lookahead blueprint to maintain a flat surface topology.
+    """
+    heights = payload.grid_heights
+    if len(heights) != 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid grid heights dimension. Array must contain exactly 10 column heights."
+        )
+    try:
+        return LookaheadPlanner.calculate_queue_blueprint(
+            grid_heights=heights,
+            queue=payload.queue
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during lookahead planning: {str(e)}"
         )
