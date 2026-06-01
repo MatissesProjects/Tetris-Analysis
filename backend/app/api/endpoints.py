@@ -6,6 +6,7 @@ from app.parser.ttr_parser import TTRParser
 from app.core.vectorizer import BoardVectorizer
 from app.index.kdtree_index import grounding_index
 from app.core.ollama_client import ollama_client
+from app.core.finesse import FinesseEvaluator
 
 router = APIRouter()
 
@@ -16,6 +17,12 @@ class AdvicePayload(BaseModel):
     grid: List[List[int]] = Field(..., description="10x40 integer matrix representing playfield blocks (0=empty, 1=filled)")
     active_piece: str = Field("I", description="Standard active held piece tetromino symbol")
     queue: List[str] = Field(..., description="List of upcoming pieces, e.g. ['Z', 'L', 'S']")
+
+class FinessePayload(BaseModel):
+    piece: str = Field(..., description="Tetromino symbol, e.g. T, I, O, L, J, S, Z")
+    target_column: int = Field(..., description="Target landing column (0 to 9)")
+    target_rotation: int = Field(..., description="Target landing rotation (0 to 3)")
+    user_keys: List[str] = Field(..., description="Keystrokes recorded for this piece placement")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -131,4 +138,23 @@ def query_advice(payload: AdvicePayload):
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred during integrated advice processing: {str(e)}"
+        )
+
+
+@router.post("/check-finesse")
+def check_finesse(payload: FinessePayload):
+    """
+    Evaluate recorded keystrokes for a piece placement against mathematical SRS optimal routes.
+    """
+    try:
+        return FinesseEvaluator.evaluate_placement(
+            piece=payload.piece,
+            target_col=payload.target_column,
+            target_rot=payload.target_rotation,
+            user_keys=payload.user_keys
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during finesse analysis: {str(e)}"
         )
