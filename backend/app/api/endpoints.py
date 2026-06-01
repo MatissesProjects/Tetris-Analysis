@@ -1,9 +1,14 @@
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from typing import Dict, Any
+from typing import Dict, Any, List
+from pydantic import BaseModel, Field
 from app.parser.ttr_parser import TTRParser
+from app.index.kdtree_index import grounding_index
 
 router = APIRouter()
+
+class GridPayload(BaseModel):
+    grid: List[List[int]] = Field(..., description="10x40 integer matrix representing playfield blocks (0=empty, 1=filled)")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -57,3 +62,24 @@ def parse_replay_json(payload: Dict[str, Any]):
         )
         
     return parsed_result
+
+
+@router.post("/query-recommendation")
+def query_recommendation(payload: GridPayload):
+    """
+    Retrieve sub-millisecond grandmaster structural matches and spatial advice based on the active board grid.
+    """
+    grid = payload.grid
+    if len(grid) != 40 or any(len(row) != 10 for row in grid):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid grid dimension. Grid must be exactly 10 columns by 40 rows."
+        )
+    try:
+        return grounding_index.query_nearest_grandmaster(grid)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during KDTree match search: {str(e)}"
+        )
+
