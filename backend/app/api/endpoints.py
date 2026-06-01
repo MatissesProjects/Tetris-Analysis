@@ -7,6 +7,7 @@ from app.core.vectorizer import BoardVectorizer
 from app.index.kdtree_index import grounding_index
 from app.core.ollama_client import ollama_client
 from app.core.finesse import FinesseEvaluator
+from app.core.speed import PacingEvaluator
 
 router = APIRouter()
 
@@ -23,6 +24,13 @@ class FinessePayload(BaseModel):
     target_column: int = Field(..., description="Target landing column (0 to 9)")
     target_rotation: int = Field(..., description="Target landing rotation (0 to 3)")
     user_keys: List[str] = Field(..., description="Keystrokes recorded for this piece placement")
+
+class PacingPayload(BaseModel):
+    spawn_time_ms: float = Field(..., description="Timestamp in ms when piece spawned")
+    first_key_time_ms: float = Field(..., description="Timestamp in ms when first key was pressed")
+    drop_time_ms: float = Field(..., description="Timestamp in ms when piece dropped")
+    key_count: int = Field(..., description="Total keys recorded for placement")
+    finesse_faults: int = Field(0, description="Finesse faults recorded (0 or 1)")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -157,4 +165,24 @@ def check_finesse(payload: FinessePayload):
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred during finesse analysis: {str(e)}"
+        )
+
+
+@router.post("/check-pacing")
+def check_pacing(payload: PacingPayload):
+    """
+    Evaluate planning and mechanical timing profiles to optimize play speed.
+    """
+    try:
+        return PacingEvaluator.evaluate_pacing(
+            spawn_time_ms=payload.spawn_time_ms,
+            first_key_time_ms=payload.first_key_time_ms,
+            drop_time_ms=payload.drop_time_ms,
+            key_count=payload.key_count,
+            finesse_faults=payload.finesse_faults
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during speed pacing evaluation: {str(e)}"
         )
