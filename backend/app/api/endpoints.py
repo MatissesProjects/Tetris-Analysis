@@ -9,6 +9,7 @@ from app.core.ollama_client import ollama_client
 from app.core.finesse import FinesseEvaluator
 from app.core.speed import PacingEvaluator
 from app.core.lookahead import LookaheadPlanner
+from app.core.eltetris import ElTetrisEvaluator
 
 router = APIRouter()
 
@@ -213,4 +214,30 @@ def query_lookahead(payload: LookaheadPayload):
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred during lookahead planning: {str(e)}"
+        )
+
+
+@router.post("/check-fitness")
+def check_fitness(payload: GridPayload):
+    """
+    Evaluate playfield structural quality and transition counts using pro bot ElTetris weights.
+    """
+    grid = payload.grid
+    if len(grid) != 40 or any(len(row) != 10 for row in grid):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid grid dimension. Grid must be exactly 10 columns by 40 rows."
+        )
+    try:
+        profile = BoardVectorizer.vectorize_board(grid)
+        return ElTetrisEvaluator.evaluate_board(
+            grid=grid,
+            heights=profile["column_heights"],
+            bumpiness=profile["bumpiness"],
+            holes_count=profile["holes_count"]
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during ElTetris board evaluation: {str(e)}"
         )
