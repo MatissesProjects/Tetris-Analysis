@@ -319,7 +319,7 @@ def suggest_trainings(payload: SuggestPayload):
     """
     Analyze game summary stats and return prioritized training recommendations.
     """
-    stats_dict = {k: v for k, v in payload.stats.dict().items() if v is not None}
+    stats_dict = {k: v for k, v in payload.stats.model_dump().items() if v is not None}
     suggestions = TrainingSuggester.suggest_trainings(stats_dict)
     return {
         "username": payload.username,

@@ -84,16 +84,27 @@ class TrainingSuggester:
         Each recommendation includes priority ranking, diagnostic reason, and default config.
         """
         # Extract inputs with defaults
-        pps = float(stats.get("pps", 0.0) or stats.get("pieces_per_second", 0.0) or 0.0)
-        pieces_placed = int(stats.get("pieces_placed", 0) or stats.get("pieces", 0) or 0)
-        finesse_faults = int(stats.get("finesse_faults", 0) or stats.get("finesse", {}).get("faults", 0) if isinstance(stats.get("finesse"), dict) else stats.get("finesse", 0))
-        max_height = int(stats.get("max_height", 0) or 0)
-        capped_holes_count = int(stats.get("capped_holes_count", 0) or 0)
-        avg_planning = float(stats.get("average_planning_latency_ms", 0.0) or stats.get("planning_latency_ms", 0.0) or 0.0)
-        avg_execution = float(stats.get("average_execution_latency_ms", 0.0) or stats.get("execution_duration_ms", 0.0) or 0.0)
+        pps = float(stats.get("pps") or stats.get("pieces_per_second") or 0.0)
+        pieces_placed = int(stats.get("pieces_placed") or stats.get("pieces") or 0)
+        max_height = int(stats.get("max_height") or 0)
+        capped_holes_count = int(stats.get("capped_holes_count") or 0)
+        avg_planning = float(stats.get("average_planning_latency_ms") or stats.get("planning_latency_ms") or 0.0)
+        avg_execution = float(stats.get("average_execution_latency_ms") or stats.get("execution_duration_ms") or 0.0)
         opening_matched = stats.get("opening_matched", None)
-        apm = float(stats.get("apm", 0.0) or 0.0)
-        b2b_spikes = int(stats.get("b2b_spikes", 0) or 0)
+        apm = float(stats.get("apm") or 0.0)
+        b2b_spikes = int(stats.get("b2b_spikes") or 0)
+
+        # Resolve finesse faults safely
+        finesse_faults = stats.get("finesse_faults")
+        if finesse_faults is None:
+            finesse_obj = stats.get("finesse")
+            if isinstance(finesse_obj, dict):
+                finesse_faults = finesse_obj.get("faults", 0)
+            elif isinstance(finesse_obj, (int, float)):
+                finesse_faults = int(finesse_obj)
+            else:
+                finesse_faults = 0
+        finesse_faults = int(finesse_faults)
 
         # 1. Finesse Fault Rate calculation
         finesse_rate = 0.0
@@ -178,8 +189,8 @@ class TrainingSuggester:
             })
 
         # -- RULE 6: Attack Optimization --
-        # Triggered if attack rate (APM) is low relative to placement speed
-        if pps > 0.0 and (apm / pps) < 15.0 and pieces_placed >= 30:
+        # Triggered if attack rate (APM) is low relative to placement speed, and APM is explicitly tracked
+        if pps > 0.0 and "apm" in stats and (apm / pps) < 15.0 and pieces_placed >= 30:
             attack_ratio = apm / pps
             score = (15.0 - attack_ratio) * 3.0 + max(0.0, (3.0 - b2b_spikes) * 10.0)
             reason = (
