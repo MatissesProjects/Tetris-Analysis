@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 from app.parser.ttr_parser import TTRParser
 from app.core.vectorizer import BoardVectorizer
@@ -12,6 +12,7 @@ from app.core.lookahead import LookaheadPlanner
 from app.core.eltetris import ElTetrisEvaluator
 from app.core.attack import AttackCalculator
 from app.core.openings import OpeningMatcher
+from app.core.training import TrainingSuggester
 
 router = APIRouter()
 
@@ -48,6 +49,22 @@ class AttackPayload(BaseModel):
 class OpeningPayload(BaseModel):
     pieces_placed: List[str] = Field(..., description="Tetromino shapes in order of placement")
     columns_placed: List[int] = Field(..., description="Landing columns in order of placement")
+
+class GameStatsPayload(BaseModel):
+    pps: Optional[float] = Field(None, description="Pieces per second")
+    pieces_placed: Optional[int] = Field(None, description="Total pieces placed in the game")
+    finesse_faults: Optional[int] = Field(None, description="Total finesse faults committed")
+    max_height: Optional[int] = Field(None, description="Maximum height reached on the board")
+    capped_holes_count: Optional[int] = Field(None, description="Count of capped downstack holes")
+    average_planning_latency_ms: Optional[float] = Field(None, description="Average time before first keystroke per piece")
+    average_execution_latency_ms: Optional[float] = Field(None, description="Average keypress execution time per piece")
+    opening_matched: Optional[bool] = Field(None, description="Whether a classic opening was recognized")
+    apm: Optional[float] = Field(None, description="Attack per minute")
+    b2b_spikes: Optional[int] = Field(None, description="Count of back-to-back spikes or lines cleared")
+
+class SuggestPayload(BaseModel):
+    username: Optional[str] = Field("Player", description="Username of the player")
+    stats: GameStatsPayload = Field(..., description="Gameplay metrics")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -287,3 +304,67 @@ def check_opening(payload: OpeningPayload):
             status_code=500,
             detail=f"An error occurred during opening match evaluation: {str(e)}"
         )
+
+
+@router.get("/trainings")
+def get_available_trainings():
+    """
+    Retrieve the library of all supported training modes.
+    """
+    return TrainingSuggester.get_available_trainings()
+
+
+@router.post("/trainings/suggest")
+def suggest_trainings(payload: SuggestPayload):
+    """
+    Analyze game summary stats and return prioritized training recommendations.
+    """
+    stats_dict = {k: v for k, v in payload.stats.dict().items() if v is not None}
+    suggestions = TrainingSuggester.suggest_trainings(stats_dict)
+    return {
+        "username": payload.username,
+        "suggestions": suggestions
+    }
+
+
+@router.post("/trainings/suggest-from-replay")
+async def suggest_from_replay_file(file: UploadFile = File(...)):
+    """
+    Upload a replay file (.ttr, .ttrm, or .json), extract telemetry/stats, and suggest training regimens.
+    """
+    if not (file.filename.endswith(".ttr") or file.filename.endswith(".ttrm") or file.filename.endswith(".json")):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file format. Please upload a .ttr, .ttrm, or .json file."
+        )
+        
+    try:
+        content = await file.read()
+        replay_data = json.loads(content.decode("utf-8"))
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid JSON format. The uploaded file is corrupted or not a valid JSON structure."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while reading the file: {str(e)}"
+        )
+        
+    parsed_replay = TTRParser.parse_replay(replay_data)
+    
+    meta_stats = parsed_replay.get("metadata", {}).get("stats", {}) or {}
+    
+    events = parsed_replay.get("events", [])
+    event_stats = TrainingSuggester.parse_events_for_stats(events)
+    
+    merged_stats = {**meta_stats, **event_stats}
+    
+    suggestions = TrainingSuggester.suggest_trainings(merged_stats)
+    
+    return {
+        "metadata": parsed_replay.get("metadata", {}),
+        "extracted_stats": merged_stats,
+        "suggestions": suggestions
+    }
