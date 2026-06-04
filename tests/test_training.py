@@ -15,7 +15,7 @@ from backend.app.api.endpoints import (
 def test_get_available_trainings():
     """Verify that available trainings library is correctly returned."""
     trainings = TrainingSuggester.get_available_trainings()
-    assert len(trainings) == 6
+    assert len(trainings) == 9
     ids = {t["id"] for t in trainings}
     assert "finesse_rewind" in ids
     assert "lookahead_mask" in ids
@@ -23,6 +23,9 @@ def test_get_available_trainings():
     assert "speed_pacing" in ids
     assert "opening_mastery" in ids
     assert "attack_optimization" in ids
+    assert "handling_calibration" in ids
+    assert "finesse_sprint" in ids
+    assert "special_spins_mastery" in ids
 
 
 def test_suggest_finesse_rewind():
@@ -99,6 +102,53 @@ def test_suggest_attack_optimization():
     assert any(s["training_id"] == "attack_optimization" for s in suggestions)
 
 
+def test_suggest_handling_calibration():
+    """Verify that high KPP or slow execution triggers Handling Calibration."""
+    stats = {
+        "pieces_placed": 50,
+        "kpp": 4.2,
+        "average_execution_latency_ms": 300.0,
+    }
+    suggestions = TrainingSuggester.suggest_trainings(stats)
+    assert len(suggestions) >= 1
+    assert any(s["training_id"] == "handling_calibration" for s in suggestions)
+    sugg = [s for s in suggestions if s["training_id"] == "handling_calibration"][0]
+    assert "average keystrokes per piece is 4.20" in sugg["reason"]
+
+
+def test_suggest_finesse_sprint():
+    """Verify that push-speed triggers are generated for Finesse Speed Sprint."""
+    # Case A: fast but error prone
+    stats_a = {
+        "pieces_placed": 100,
+        "pps": 2.2,
+        "finesse_faults": 8,  # 8% fault rate
+    }
+    suggestions_a = TrainingSuggester.suggest_trainings(stats_a)
+    assert any(s["training_id"] == "finesse_sprint" for s in suggestions_a)
+    
+    # Case B: moderate speed but clean finesse
+    stats_b = {
+        "pieces_placed": 50,
+        "pps": 1.5,
+        "finesse_faults": 1,  # 2% fault rate
+    }
+    suggestions_b = TrainingSuggester.suggest_trainings(stats_b)
+    assert any(s["training_id"] == "finesse_sprint" for s in suggestions_b)
+
+
+def test_suggest_special_spins_mastery():
+    """Verify that low back-to-back triggers suggest Special Spins Mastery."""
+    stats = {
+        "pieces_placed": 50,
+        "pps": 1.8,
+        "b2b_spikes": 1,
+        "apm": 15.0,
+    }
+    suggestions = TrainingSuggester.suggest_trainings(stats)
+    assert any(s["training_id"] == "special_spins_mastery" for s in suggestions)
+
+
 def test_suggest_fallback_balanced():
     """Verify that balanced stats suggest default Speed Pacing fallback."""
     stats = {
@@ -139,13 +189,15 @@ def test_parse_events_for_stats():
     assert stats["average_planning_latency_ms"] == 125.0
     # First piece execution = 300 - 100 = 200. Second piece execution = 800 - 450 = 350. Avg = 275ms
     assert stats["average_execution_latency_ms"] == 275.0
+    # Both pieces had exactly 2 keystrokes
+    assert stats["keystrokes_per_piece"] == 2.0
 
 
 def test_api_get_available_trainings():
     """Verify get_available_trainings API endpoint."""
     res = get_available_trainings()
     assert isinstance(res, list)
-    assert len(res) == 6
+    assert len(res) == 9
 
 
 def test_api_suggest_trainings():

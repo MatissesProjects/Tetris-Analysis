@@ -61,6 +61,8 @@ class GameStatsPayload(BaseModel):
     opening_matched: Optional[bool] = Field(None, description="Whether a classic opening was recognized")
     apm: Optional[float] = Field(None, description="Attack per minute")
     b2b_spikes: Optional[int] = Field(None, description="Count of back-to-back spikes or lines cleared")
+    keystrokes_per_piece: Optional[float] = Field(None, description="Average keystrokes per piece (KPP)")
+    kpp: Optional[float] = Field(None, description="Average keys per piece (KPP) alias")
 
 class SuggestPayload(BaseModel):
     username: Optional[str] = Field("Player", description="Username of the player")

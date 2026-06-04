@@ -63,6 +63,39 @@ TRAINING_MODES = {
             "require_b2b": True,
             "minimum_combo": 2
         }
+    },
+    "handling_calibration": {
+        "id": "handling_calibration",
+        "name": "DAS/ARR Handling Calibration",
+        "description": "Optimize your ARR and DAS inputs by analyzing your keystroke hold durations and autoshift releases.",
+        "benefits": "Eliminates keypress overshoot, minimizes active frame input lock, and helps configure optimal game handling settings.",
+        "default_config": {
+            "target_das_frames": 8.0,
+            "target_arr_frames": 0.0,
+            "enforce_sonic_drop": True
+        }
+    },
+    "finesse_sprint": {
+        "id": "finesse_sprint",
+        "name": "Finesse Speed Sprint",
+        "description": "Maintain perfect SRS finesse execution while playing above a target speed threshold (PPS).",
+        "benefits": "Combines raw mechanical speed training with strict input control to build stable flow state play.",
+        "default_config": {
+            "target_pps": 2.2,
+            "strict_finesse": True,
+            "fail_on_fault": True
+        }
+    },
+    "special_spins_mastery": {
+        "id": "special_spins_mastery",
+        "name": "Special Spins & Overhang Setup",
+        "description": "Practice constructing and rotating pieces into T-Spin slots, S/Z notches, and extreme SRS kick dependency profiles.",
+        "benefits": "Expands tactical setup options, trains rotation kick tables, and increases APM potential.",
+        "default_config": {
+            "focus_spins": ["TSD", "TST", "S-Spin", "Z-Spin"],
+            "minimum_overhangs": 3,
+            "time_limit_sec": 120
+        }
     }
 }
 
@@ -93,6 +126,7 @@ class TrainingSuggester:
         opening_matched = stats.get("opening_matched", None)
         apm = float(stats.get("apm") or 0.0)
         b2b_spikes = int(stats.get("b2b_spikes") or 0)
+        kpp = float(stats.get("keystrokes_per_piece") or stats.get("kpp") or 0.0)
 
         # Resolve finesse faults safely
         finesse_faults = stats.get("finesse_faults")
@@ -204,14 +238,72 @@ class TrainingSuggester:
                 "config": TRAINING_MODES["attack_optimization"]["default_config"]
             })
 
+        # -- RULE 7: DAS/ARR Handling Calibration --
+        # Triggered when keystrokes per piece is high (tapping instead of holding DAS) or movement execution is slow
+        if (kpp > 3.5 or avg_execution > 450.0) and pieces_placed >= 20:
+            score = (kpp - 3.5) * 20.0 + max(0.0, (avg_execution - 450.0) / 5.0)
+            reason = (
+                f"Your average keystrokes per piece is {kpp:.2f} (optimal is ~3.0) and mechanical latency is {avg_execution:.1f}ms. "
+                "DAS/ARR Handling Calibration will help optimize your speed parameters and prevent input over-tapping."
+            )
+            recommendations.append({
+                "training_id": "handling_calibration",
+                "score": round(score, 1),
+                "reason": reason,
+                "config": TRAINING_MODES["handling_calibration"]["default_config"]
+            })
+
+        # -- RULE 8: Finesse Speed Sprint --
+        # Triggered to push speed under strict finesse limits
+        if pps > 0.0 and pieces_placed >= 30:
+            if pps >= 2.0 and 0.05 <= finesse_rate < 0.15:
+                score = finesse_rate * 150.0 + (pps - 2.0) * 10.0
+                reason = (
+                    f"You stack at a fast pace of {pps:.2f} PPS but incur a {finesse_rate:.1%} finesse error rate. "
+                    "Finesse Speed Sprint will challenge you to maintain this speed under strict error-free placement rules."
+                )
+                recommendations.append({
+                    "training_id": "finesse_sprint",
+                    "score": round(score, 1),
+                    "reason": reason,
+                    "config": TRAINING_MODES["finesse_sprint"]["default_config"]
+                })
+            elif 1.2 <= pps < 2.0 and finesse_rate < 0.10:
+                score = (2.0 - pps) * 15.0 + (10.0 - finesse_rate * 100.0)
+                reason = (
+                    f"Your placement technique is clean (finesse rate {finesse_rate:.1%}) but speed is moderate at {pps:.2f} PPS. "
+                    "We recommend Finesse Speed Sprint to push your speed limit while preserving precise placement mechanics."
+                )
+                recommendations.append({
+                    "training_id": "finesse_sprint",
+                    "score": round(score, 1),
+                    "reason": reason,
+                    "config": TRAINING_MODES["finesse_sprint"]["default_config"]
+                })
+
+        # -- RULE 9: Special Spins & Overhang Setup --
+        # Triggered when speed is decent but back-to-back attacks are low
+        if pps >= 1.5 and pieces_placed >= 30:
+            attack_ratio = apm / pps if pps > 0.0 else 0.0
+            if b2b_spikes < 3 or (apm > 0.0 and attack_ratio < 12.0):
+                score = (3 - b2b_spikes) * 15.0 + max(0.0, (12.0 - attack_ratio) * 4.0)
+                reason = (
+                    f"You maintain a speed of {pps:.2f} PPS but only completed {b2b_spikes} Back-to-Back clears. "
+                    "Special Spins Mastery will teach you how to construct T-Spin overhangs and Z/S-spin slots to boost APM efficiency."
+                )
+                recommendations.append({
+                    "training_id": "special_spins_mastery",
+                    "score": round(score, 1),
+                    "reason": reason,
+                    "config": TRAINING_MODES["special_spins_mastery"]["default_config"]
+                })
+
         # Sort by score descending
         recommendations.sort(key=lambda x: x["score"], reverse=True)
 
         # Assign priority ranking (1 is highest)
         for idx, rec in enumerate(recommendations):
             rec["priority"] = idx + 1
-            # Remove internal score from response to keep payload clean, or keep it for debugging
-            # Let's keep it but also provide priority
             
         # Fallback if no specific training triggered
         if not recommendations:
@@ -248,8 +340,6 @@ class TrainingSuggester:
 
             frame = event.get("frame", 0)
             subframe = event.get("data", {}).get("subframe", 0.0)
-            # Standard conversion: 60fps * 10 subframes = 600 ticks per second (1.6667ms per tick)
-            # If subframe is already within frame bounds, we multiply (frame + subframe) by frame duration (16.6667ms)
             evt_time = (frame + subframe) * 16.6667
 
             current_piece_events.append((key, evt_type, evt_time))
@@ -269,6 +359,7 @@ class TrainingSuggester:
         total_planning_latency = 0.0
         total_execution_duration = 0.0
         finesse_faults = 0
+        total_keystrokes = 0
         valid_pacing_count = 0
 
         for p in pieces:
@@ -299,17 +390,16 @@ class TrainingSuggester:
 
             total_planning_latency += planning_latency
             total_execution_duration += execution_duration
+            total_keystrokes += len(user_keys)
             valid_pacing_count += 1
 
-            # Simple fallback check for finesse faults if user_keys has excessive taps
-            # Let's count keys. If they use more than 4 keystrokes for simple adjustments, count it as a fault.
             if len(user_keys) > 5:
                 finesse_faults += 1
 
         avg_planning = total_planning_latency / valid_pacing_count if valid_pacing_count > 0 else 0.0
         avg_execution = total_execution_duration / valid_pacing_count if valid_pacing_count > 0 else 0.0
+        kpp = total_keystrokes / valid_pacing_count if valid_pacing_count > 0 else 0.0
         
-        # Estimate PPS based on total match time
         total_time_sec = last_drop_time / 1000.0
         pps = total_pieces / total_time_sec if total_time_sec > 0 else 0.0
 
@@ -318,5 +408,6 @@ class TrainingSuggester:
             "pps": round(pps, 2),
             "finesse_faults": finesse_faults,
             "average_planning_latency_ms": round(avg_planning, 1),
-            "average_execution_latency_ms": round(avg_execution, 1)
+            "average_execution_latency_ms": round(avg_execution, 1),
+            "keystrokes_per_piece": round(kpp, 2)
         }
