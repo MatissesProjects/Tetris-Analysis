@@ -15,7 +15,7 @@ from backend.app.api.endpoints import (
 def test_get_available_trainings():
     """Verify that available trainings library is correctly returned."""
     trainings = TrainingSuggester.get_available_trainings()
-    assert len(trainings) == 9
+    assert len(trainings) == 10
     ids = {t["id"] for t in trainings}
     assert "finesse_rewind" in ids
     assert "lookahead_mask" in ids
@@ -26,6 +26,7 @@ def test_get_available_trainings():
     assert "handling_calibration" in ids
     assert "finesse_sprint" in ids
     assert "special_spins_mastery" in ids
+    assert "rotate180_mastery" in ids
 
 
 def test_suggest_finesse_rewind():
@@ -149,6 +150,49 @@ def test_suggest_special_spins_mastery():
     assert any(s["training_id"] == "special_spins_mastery" for s in suggestions)
 
 
+def test_suggest_rotate180_mastery():
+    """Verify that double rotations trigger 180 Rotation Mastery recommendation."""
+    # Case A: double rotations, no 180 key usage (higher score)
+    stats_a = {
+        "pieces_placed": 50,
+        "double_rotations": 3,
+        "rotate180_count": 0,
+    }
+    suggestions_a = TrainingSuggester.suggest_trainings(stats_a)
+    assert any(s["training_id"] == "rotate180_mastery" for s in suggestions_a)
+    sugg_a = [s for s in suggestions_a if s["training_id"] == "rotate180_mastery"][0]
+    assert sugg_a["score"] == 65.0  # 3 * 15 + 20
+
+    # Case B: double rotations, but they use 180 key sometimes (lower score)
+    stats_b = {
+        "pieces_placed": 50,
+        "double_rotations": 2,
+        "rotate180_count": 1,
+    }
+    suggestions_b = TrainingSuggester.suggest_trainings(stats_b)
+    assert any(s["training_id"] == "rotate180_mastery" for s in suggestions_b)
+    sugg_b = [s for s in suggestions_b if s["training_id"] == "rotate180_mastery"][0]
+    assert sugg_b["score"] == 30.0  # 2 * 15
+
+
+def test_parse_events_with_double_rotations_and_180():
+    """Verify that parse_events_for_stats correctly extracts double rotations and 180 count."""
+    events = [
+        # Piece 1: 1 move, 2 rotateCW (double rotation)
+        {"frame": 6, "type": "keydown", "data": {"key": "moveLeft", "subframe": 0.0}},
+        {"frame": 12, "type": "keydown", "data": {"key": "rotateCW", "subframe": 0.0}},
+        {"frame": 15, "type": "keydown", "data": {"key": "rotateCW", "subframe": 0.0}},
+        {"frame": 18, "type": "keydown", "data": {"key": "hardDrop", "subframe": 0.0}},
+        # Piece 2: 1 direct rotate180
+        {"frame": 27, "type": "keydown", "data": {"key": "rotate180", "subframe": 0.0}},
+        {"frame": 48, "type": "keydown", "data": {"key": "hardDrop", "subframe": 0.0}},
+    ]
+    stats = TrainingSuggester.parse_events_for_stats(events)
+    assert stats["pieces_placed"] == 2
+    assert stats["double_rotations"] == 1
+    assert stats["rotate180_count"] == 1
+
+
 def test_suggest_fallback_balanced():
     """Verify that balanced stats suggest default Speed Pacing fallback."""
     stats = {
@@ -197,7 +241,7 @@ def test_api_get_available_trainings():
     """Verify get_available_trainings API endpoint."""
     res = get_available_trainings()
     assert isinstance(res, list)
-    assert len(res) == 9
+    assert len(res) == 10
 
 
 def test_api_suggest_trainings():

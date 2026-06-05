@@ -63,6 +63,8 @@ class GameStatsPayload(BaseModel):
     b2b_spikes: Optional[int] = Field(None, description="Count of back-to-back spikes or lines cleared")
     keystrokes_per_piece: Optional[float] = Field(None, description="Average keystrokes per piece (KPP)")
     kpp: Optional[float] = Field(None, description="Average keys per piece (KPP) alias")
+    double_rotations: Optional[int] = Field(None, description="Count of double 90-degree rotations in a game")
+    rotate180_count: Optional[int] = Field(None, description="Count of direct 180-degree rotations used")
 
 class SuggestPayload(BaseModel):
     username: Optional[str] = Field("Player", description="Username of the player")

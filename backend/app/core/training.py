@@ -96,6 +96,17 @@ TRAINING_MODES = {
             "minimum_overhangs": 3,
             "time_limit_sec": 120
         }
+    },
+    "rotate180_mastery": {
+        "id": "rotate180_mastery",
+        "name": "180° Rotation Mastery",
+        "description": "Optimize your piece flipping efficiency by utilizing the dedicated 180-degree rotation input instead of double tap rotations.",
+        "benefits": "Decreases keys-per-piece (KPP), prevents double-rotation lag, and unlocks specific high-level wall kicks.",
+        "default_config": {
+            "rotate180_key": "c",
+            "target_uses": 10,
+            "allow_double_tap": False
+        }
     }
 }
 
@@ -127,6 +138,8 @@ class TrainingSuggester:
         apm = float(stats.get("apm") or 0.0)
         b2b_spikes = int(stats.get("b2b_spikes") or 0)
         kpp = float(stats.get("keystrokes_per_piece") or stats.get("kpp") or 0.0)
+        double_rotations = int(stats.get("double_rotations") or 0)
+        rotate180_count = int(stats.get("rotate180_count") or 0)
 
         # Resolve finesse faults safely
         finesse_faults = stats.get("finesse_faults")
@@ -298,6 +311,23 @@ class TrainingSuggester:
                     "config": TRAINING_MODES["special_spins_mastery"]["default_config"]
                 })
 
+        # -- RULE 10: 180° Rotation Mastery --
+        # Triggered when user executes double rotations (rotateCW >= 2 or rotateCCW >= 2)
+        if double_rotations > 0 and pieces_placed >= 10:
+            score = double_rotations * 15.0
+            if rotate180_count == 0:
+                score += 20.0  # Encourage using the dedicated key if they haven't used it at all
+            reason = (
+                f"You performed {double_rotations} double-tap 90° rotations. "
+                "Practicing 180° Rotation Mastery (using your 'rotate180' key bound to 'c') will reduce your input actions and increase rotation speed."
+            )
+            recommendations.append({
+                "training_id": "rotate180_mastery",
+                "score": round(score, 1),
+                "reason": reason,
+                "config": TRAINING_MODES["rotate180_mastery"]["default_config"]
+            })
+
         # Sort by score descending
         recommendations.sort(key=lambda x: x["score"], reverse=True)
 
@@ -360,6 +390,8 @@ class TrainingSuggester:
         total_execution_duration = 0.0
         finesse_faults = 0
         total_keystrokes = 0
+        double_rotations = 0
+        total_rotate180 = 0
         valid_pacing_count = 0
 
         for p in pieces:
@@ -393,6 +425,13 @@ class TrainingSuggester:
             total_keystrokes += len(user_keys)
             valid_pacing_count += 1
 
+            # Count double 90-degree taps and direct 180 inputs
+            cw_count = user_keys.count("rotateCW")
+            ccw_count = user_keys.count("rotateCCW")
+            if cw_count >= 2 or ccw_count >= 2:
+                double_rotations += 1
+            total_rotate180 += user_keys.count("rotate180")
+
             if len(user_keys) > 5:
                 finesse_faults += 1
 
@@ -409,5 +448,7 @@ class TrainingSuggester:
             "finesse_faults": finesse_faults,
             "average_planning_latency_ms": round(avg_planning, 1),
             "average_execution_latency_ms": round(avg_execution, 1),
-            "keystrokes_per_piece": round(kpp, 2)
+            "keystrokes_per_piece": round(kpp, 2),
+            "double_rotations": double_rotations,
+            "rotate180_count": total_rotate180
         }
