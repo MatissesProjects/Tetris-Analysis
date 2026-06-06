@@ -56,16 +56,34 @@ class AttackCalculator:
             "triple": 2,
             "quad": 4,          # Tetris
             "tspin_mini": 0,
+            "tspin_mini_single": 0,
+            "tspin_mini_double": 1,
+            "tspin_mini_triple": 2,
             "tspin_single": 2,
             "tspin_double": 4,
             "tspin_triple": 6,
+            "jspin_mini": 0,
+            "jspin_mini_single": 0,
+            "jspin_mini_double": 1,
+            "jspin_mini_triple": 2,
+            "jspin_single": 2,
+            "jspin_double": 4,
+            "jspin_triple": 6,
+            "lspin_mini": 0,
+            "lspin_mini_single": 0,
+            "lspin_mini_double": 1,
+            "lspin_mini_triple": 2,
+            "lspin_single": 2,
+            "lspin_double": 4,
+            "lspin_triple": 6,
             "perfect_clear": 10
         }
         
         base_lines = base_map.get(clear_type.lower(), 0)
         
         # 2. Back-to-Back (B2B) Bonus
-        is_difficult = clear_type.lower() in {"quad", "tspin_single", "tspin_double", "tspin_triple"}
+        is_spin = "spin" in clear_type.lower()
+        is_difficult = clear_type.lower() == "quad" or is_spin
         b2b_bonus = 0
         b2b_active = b2b_chain_length > 0
         

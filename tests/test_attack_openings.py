@@ -29,6 +29,42 @@ def test_attack_quad_b2b_spike():
     assert "Spike Threat" in result["tactical_coaching"]
 
 
+def test_attack_jspin_double():
+    """Verify J-Spin Double base damage and B2B preservation."""
+    result = AttackCalculator.evaluate_clear(
+        clear_type="jspin_double",
+        b2b_chain_length=3,
+        combo_count=0
+    )
+    # base 4 + B2B 1 = 5
+    assert result["total_garbage_sent"] == 5
+    assert result["attack_category"] == "B2B Engine"
+
+
+def test_attack_lspin_triple_combo():
+    """Verify L-Spin Triple with B2B and combo sends a massive spike."""
+    result = AttackCalculator.evaluate_clear(
+        clear_type="lspin_triple",
+        b2b_chain_length=5,
+        combo_count=2
+    )
+    # base 6 + B2B 1 + combo 2 bonus (1) = 8
+    assert result["total_garbage_sent"] == 8
+    assert result["attack_category"] == "Spike Attack"
+
+
+def test_attack_jspin_mini_single():
+    """Verify J-Spin Mini Single sends 0 lines but registers as a difficult clear (supports B2B)."""
+    result = AttackCalculator.evaluate_clear(
+        clear_type="jspin_mini_single",
+        b2b_chain_length=1,
+        combo_count=0
+    )
+    # base 0 + B2B 1 = 1
+    assert result["total_garbage_sent"] == 1
+    assert result["b2b_bonus"] == 1
+
+
 def test_opening_matcher_tki3():
     """Verify that TKI 3 flat-top opening aligns with first bag placements."""
     # Matches TKI 3 columns exactly: [0, 8, 3, 5, 2]
