@@ -20,6 +20,8 @@ class TTRParser:
             ("data", "seed"),
             ("game", "seed"),
             ("opts", "seed"),
+            ("replay", "options", "seed"),
+            ("replay", "options", "seed_random"),
             ("seed",),
         ]
         
@@ -54,6 +56,7 @@ class TTRParser:
         paths = [
             ("data", "events"),
             ("events",),
+            ("replay", "events"),
         ]
         
         for path in paths:
@@ -105,8 +108,15 @@ class TTRParser:
             elif isinstance(data["data"], list) and len(data["data"]) > 0:
                 user = data["data"][0].get("user", {})
                 
-        if isinstance(user, dict):
+        if isinstance(user, dict) and user:
             metadata["username"] = user.get("username", "Unknown Player")
+        else:
+            # Fallback to root level "users" list (e.g. from zenith replays)
+            users = data.get("users", [])
+            if isinstance(users, list) and len(users) > 0 and isinstance(users[0], dict):
+                metadata["username"] = users[0].get("username", "Unknown Player")
+            else:
+                metadata["username"] = "Unknown Player"
             
         # Try to extract general match statistics
         stats = {}
@@ -124,6 +134,28 @@ class TTRParser:
             for k in target_stats:
                 if k in stats_source:
                     stats[k] = stats_source[k]
+
+        # Look in replay.results.stats or replay.results.aggregatestats
+        replay = data.get("replay", {})
+        if isinstance(replay, dict):
+            results = replay.get("results", {})
+            if isinstance(results, dict):
+                r_stats = results.get("stats", {})
+                agg_stats = results.get("aggregatestats", {})
+                if isinstance(r_stats, dict):
+                    if "score" in r_stats:
+                        stats["score"] = r_stats["score"]
+                    if "lines" in r_stats:
+                        stats["lines"] = r_stats["lines"]
+                    if "piecesplaced" in r_stats:
+                        stats["pieces"] = r_stats["piecesplaced"]
+                    if "finesse" in r_stats and isinstance(r_stats["finesse"], dict):
+                        stats["finesse_faults"] = r_stats["finesse"].get("faults")
+                if isinstance(agg_stats, dict):
+                    if "pps" in agg_stats:
+                        stats["pps"] = agg_stats["pps"]
+                    if "apm" in agg_stats:
+                        stats["apm"] = agg_stats["apm"]
                     
         metadata["stats"] = stats
         return metadata
