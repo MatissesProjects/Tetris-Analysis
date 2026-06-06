@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 from app.parser.ttr_parser import TTRParser
@@ -372,3 +372,44 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
         "extracted_stats": merged_stats,
         "suggestions": suggestions
     }
+
+
+@router.websocket("/ws/telemetry")
+async def websocket_telemetry(websocket: WebSocket):
+    """
+    WebSocket endpoint for live telemetry streaming from the Chrome extension.
+    Aggregates events, provides real-time lookahead unmask flashing, and triggers
+    tactical suggestions/interventions.
+    """
+    await websocket.accept()
+    session_events = []
+    last_intervention_count = 0
+    try:
+        while True:
+            event = await websocket.receive_json()
+            session_events.append(event)
+            
+            key = event.get("data", {}).get("key")
+            evt_type = event.get("type")
+            
+            # Locked piece checkpoint
+            if key == "hardDrop" and evt_type == "keydown":
+                stats = TrainingSuggester.parse_events_for_stats(session_events)
+                if stats:
+                    pieces_placed = stats.get("pieces_placed", 0)
+                    # Flashing heuristic: flash every 3 pieces placed
+                    if pieces_placed > 0 and pieces_placed % 3 == 0:
+                        await websocket.send_json({"action": "flash_unmask"})
+                    
+                    # Intervention heuristic: if double rotations count grows
+                    double_rots = stats.get("double_rotations", 0)
+                    if double_rots > last_intervention_count and double_rots >= 2:
+                        last_intervention_count = double_rots
+                        await websocket.send_json({
+                            "action": "intervention",
+                            "message": "Finesse alert: Stop double-tapping 90° rotations! Utilize your dedicated 180° rotation input (C key) to save keystrokes and play faster."
+                        })
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
