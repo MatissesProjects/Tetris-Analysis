@@ -1,5 +1,7 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.api.endpoints import router as api_router
 
@@ -23,8 +25,5 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def index():
-    return {
-        "status": "online",
-        "message": "Aegis-Tetris Analyzer Backend is running.",
-        "version": settings.VERSION
-    }
+    html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    return FileResponse(html_path)
