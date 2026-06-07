@@ -291,3 +291,26 @@ async def test_api_suggest_from_replay():
     assert res["metadata"]["username"] == "ReplayTester"
     assert "suggestions" in res
     assert len(res["suggestions"]) >= 1
+
+
+def test_suggest_trainings_finesse_calculation():
+    """Verify that finesse rate calculation uses perfect pieces correctly if available."""
+    # Case with perfect pieces metadata
+    stats = {
+        "pieces_placed": 100,
+        "finesse_faults": 28,
+        "finesse_perfect_pieces": 80
+    }
+    suggestions = TrainingSuggester.suggest_trainings(stats)
+    # The reason should display 80.0% finesse rate
+    finesse_rewind_sugg = [s for s in suggestions if s["training_id"] == "finesse_rewind"][0]
+    assert "finesse rate is 80.0%" in finesse_rewind_sugg["reason"]
+
+    # Case falling back to pieces_placed - faults
+    stats_fallback = {
+        "pieces_placed": 100,
+        "finesse_faults": 20
+    }
+    suggestions_fallback = TrainingSuggester.suggest_trainings(stats_fallback)
+    finesse_rewind_fallback = [s for s in suggestions_fallback if s["training_id"] == "finesse_rewind"][0]
+    assert "finesse rate is 80.0%" in finesse_rewind_fallback["reason"]

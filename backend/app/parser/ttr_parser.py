@@ -151,6 +151,7 @@ class TTRParser:
                         stats["pieces"] = r_stats["piecesplaced"]
                     if "finesse" in r_stats and isinstance(r_stats["finesse"], dict):
                         stats["finesse_faults"] = r_stats["finesse"].get("faults")
+                        stats["finesse_perfect_pieces"] = r_stats["finesse"].get("perfectpieces")
                 if isinstance(agg_stats, dict):
                     if "pps" in agg_stats:
                         stats["pps"] = agg_stats["pps"]

@@ -846,7 +846,7 @@
             const totalPieces = ext.pieces_placed || stats.pieces || 0;
             const kppVal = ext.keystrokes_per_piece || 0;
             const kptVal = kppVal * totalPieces;
-            const fRate = ext.finesse_rate !== undefined ? (ext.finesse_rate * 100) : (kptVal > 0 ? (Math.max(0, kptVal - fFaults) / kptVal * 100) : 100.0);
+            const fRate = ext.finesse_rate !== undefined ? (ext.finesse_rate * 100) : (totalPieces > 0 ? (Math.max(0, totalPieces - fFaults) / totalPieces * 100) : 100.0);
 
             document.getElementById('statFinesseFaults').textContent = fFaults;
             document.getElementById('statKpp').textContent = kppVal.toFixed(2);

@@ -156,9 +156,14 @@ class TrainingSuggester:
         # 1. Finesse Fault Rate calculation
         finesse_rate = stats.get("finesse_rate")
         if finesse_rate is None:
-            kpt = kpp * pieces_placed
-            if kpt > 0:
-                finesse_rate = max(0.0, (kpt - finesse_faults) / kpt)
+            perfect_pieces = stats.get("finesse_perfect_pieces")
+            if perfect_pieces is not None:
+                perfect_pieces = int(perfect_pieces)
+            else:
+                perfect_pieces = max(0, pieces_placed - finesse_faults)
+            
+            if pieces_placed > 0:
+                finesse_rate = max(0.0, min(1.0, perfect_pieces / pieces_placed))
             else:
                 finesse_rate = 1.0
         

@@ -377,14 +377,19 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
     # Prioritize official game metadata (which includes accurate finesse fault tracking) over event-parsed heuristics
     merged_stats = {**event_stats, **meta_stats}
     
-    # Calculate key-based finesse rate: (kpt - finesse_faults) / kpt
-    kpp = float(merged_stats.get("keystrokes_per_piece") or 0.0)
+    # Calculate piece-based finesse rate: perfect_pieces / total_pieces
     pieces = int(merged_stats.get("pieces_placed") or merged_stats.get("pieces") or 0)
-    faults = int(merged_stats.get("finesse_faults") or 0)
-    kpt = kpp * pieces
+    perfect_pieces = merged_stats.get("finesse_perfect_pieces")
+    
+    if perfect_pieces is not None:
+        perfect_pieces = int(perfect_pieces)
+    else:
+        faults = int(merged_stats.get("finesse_faults") or 0)
+        perfect_pieces = max(0, pieces - faults)
+        
     finesse_rate = 1.0
-    if kpt > 0:
-        finesse_rate = max(0.0, (kpt - faults) / kpt)
+    if pieces > 0:
+        finesse_rate = max(0.0, min(1.0, perfect_pieces / pieces))
     merged_stats["finesse_rate"] = round(finesse_rate, 4)
     
     suggestions = TrainingSuggester.suggest_trainings(merged_stats)

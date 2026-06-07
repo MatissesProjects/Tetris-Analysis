@@ -72,3 +72,18 @@ def test_parser_extracts_events_and_metadata():
     valid_pieces = {"Z", "L", "O", "S", "I", "J", "T"}
     for piece in result["projected_queue"]:
         assert piece in valid_pieces
+
+
+def test_parse_real_ttr_file():
+    """Verify that parsing the real 40line.ttr extracts the correct stats including perfect pieces."""
+    import os
+    import json
+    path = os.path.expanduser('~/Downloads/40line.ttr')
+    if os.path.exists(path):
+        with open(path) as f:
+            data = json.load(f)
+        result = TTRParser.parse_replay(data)
+        stats = result.get("metadata", {}).get("stats", {})
+        assert stats.get("finesse_faults") == 28
+        assert stats.get("finesse_perfect_pieces") == 84
+        assert stats.get("pieces") == 106
