@@ -21,6 +21,7 @@
             --magenta: #f107a3;
             --glow: 0 0 20px rgba(0, 242, 254, 0.25);
             --success: #10b981;
+            --orange: #f59e0b;
         }
 
         * {
@@ -239,6 +240,11 @@
 
         .stat-value.highlight-purple {
             color: var(--purple);
+        }
+
+        .stat-value.highlight-orange {
+            color: var(--orange);
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
         }
 
         .recommendation-list {
@@ -637,6 +643,10 @@
                             <span class="stat-value highlight-magenta" id="statApm">0.00</span>
                         </div>
                         <div class="stat-item">
+                            <span class="stat-label">VS Score</span>
+                            <span class="stat-value highlight-orange" id="statVsScore">0.00</span>
+                        </div>
+                        <div class="stat-item">
                             <span class="stat-label">Lines Cleared</span>
                             <span class="stat-value" id="statLines">0</span>
                         </div>
@@ -708,6 +718,7 @@
                         <h2>Progression Trends</h2>
                         <div class="chart-controls">
                             <button class="chart-btn active" onclick="switchChartMetric('score')">Score</button>
+                            <button class="chart-btn" onclick="switchChartMetric('vsscore')">VS Score</button>
                             <button class="chart-btn" onclick="switchChartMetric('pps')">PPS</button>
                             <button class="chart-btn" onclick="switchChartMetric('apm')">APM</button>
                             <button class="chart-btn" onclick="switchChartMetric('finesse_rate')">Finesse</button>
@@ -832,8 +843,16 @@
             const stats = data.metadata?.stats || {};
             const ext = data.extracted_stats || {};
 
-            document.getElementById('statPps').textContent = (ext.pps || stats.pps || 0.0).toFixed(2);
-            document.getElementById('statApm').textContent = (stats.apm || ext.apm || 0.0).toFixed(1);
+            const ppsVal = ext.pps || stats.pps || 0.0;
+            const apmVal = stats.apm || ext.apm || 0.0;
+            let vsVal = ext.vsscore || stats.vsscore;
+            if (vsVal === undefined || vsVal === null) {
+                vsVal = apmVal + ppsVal * 20;
+            }
+
+            document.getElementById('statPps').textContent = ppsVal.toFixed(2);
+            document.getElementById('statApm').textContent = apmVal.toFixed(1);
+            document.getElementById('statVsScore').textContent = parseFloat(vsVal).toFixed(1);
             document.getElementById('statLines').textContent = stats.lines || ext.lines || 0;
             document.getElementById('statPieces').textContent = ext.pieces_placed || stats.pieces || 0;
 
@@ -950,6 +969,7 @@
                                 label: function(context) {
                                     let val = context.parsed.y;
                                     if (activeMetric === 'score') return `Score: ${val.toLocaleString()}`;
+                                    if (activeMetric === 'vsscore') return `VS Score: ${val.toFixed(1)}`;
                                     if (activeMetric === 'pps') return `PPS: ${val.toFixed(2)}`;
                                     if (activeMetric === 'apm') return `APM: ${val.toFixed(1)}`;
                                     if (activeMetric === 'finesse_rate') return `Finesse Rate: ${(val * 100).toFixed(1)}%`;
@@ -991,6 +1011,11 @@
                     color: '#00f2fe',
                     gradColor: 'rgba(0, 242, 254, 0.3)',
                     label: 'Score'
+                },
+                vsscore: {
+                    color: '#f59e0b',
+                    gradColor: 'rgba(245, 158, 11, 0.3)',
+                    label: 'VS Score'
                 },
                 pps: {
                     color: '#f107a3',
@@ -1036,6 +1061,7 @@
             
             const data = historyRecords.map(item => {
                 if (activeMetric === 'score') return item.score;
+                if (activeMetric === 'vsscore') return item.vsscore !== undefined && item.vsscore !== null ? item.vsscore : (item.apm + item.pps * 20);
                 if (activeMetric === 'pps') return item.pps;
                 if (activeMetric === 'apm') return item.apm;
                 if (activeMetric === 'finesse_rate') return item.finesse_rate;
@@ -1111,6 +1137,7 @@
                         <div class="history-meta">
                             <span>PPS: ${record.pps.toFixed(2)}</span>
                             <span>APM: ${record.apm.toFixed(1)}</span>
+                            <span>VS: ${(record.vsscore !== undefined && record.vsscore !== null ? record.vsscore : (record.apm + record.pps * 20)).toFixed(1)}</span>
                             <span>Finesse: ${(record.finesse_rate * 100).toFixed(1)}%</span>
                         </div>
                         <span class="history-date">${dateStr} ${record.replay_name ? `(${escapeHtml(record.replay_name)})` : ''}</span>

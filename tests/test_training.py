@@ -15,7 +15,7 @@ from backend.app.api.endpoints import (
 def test_get_available_trainings():
     """Verify that available trainings library is correctly returned."""
     trainings = TrainingSuggester.get_available_trainings()
-    assert len(trainings) == 10
+    assert len(trainings) == 11
     ids = {t["id"] for t in trainings}
     assert "finesse_rewind" in ids
     assert "lookahead_mask" in ids
@@ -27,6 +27,7 @@ def test_get_available_trainings():
     assert "finesse_sprint" in ids
     assert "special_spins_mastery" in ids
     assert "rotate180_mastery" in ids
+    assert "combo_sustain" in ids
 
 
 def test_suggest_finesse_rewind():
@@ -35,6 +36,8 @@ def test_suggest_finesse_rewind():
         "pieces_placed": 100,
         "finesse_faults": 20,  # 20% fault rate
         "finesse_rate": 0.80,
+        "topcombo": 5,
+        "tspins": 2
     }
     suggestions = TrainingSuggester.suggest_trainings(stats)
     assert len(suggestions) >= 1
@@ -207,7 +210,9 @@ def test_suggest_fallback_balanced():
         "average_execution_latency_ms": 200.0,
         "opening_matched": True,
         "apm": 40.0,
-        "b2b_spikes": 5
+        "b2b_spikes": 5,
+        "topcombo": 5,
+        "tspins": 2
     }
     suggestions = TrainingSuggester.suggest_trainings(stats)
     assert len(suggestions) == 1
@@ -244,7 +249,7 @@ def test_api_get_available_trainings():
     """Verify get_available_trainings API endpoint."""
     res = get_available_trainings()
     assert isinstance(res, list)
-    assert len(res) == 10
+    assert len(res) == 11
 
 
 def test_api_suggest_trainings():
@@ -255,7 +260,9 @@ def test_api_suggest_trainings():
             pps=1.0,
             pieces_placed=100,
             finesse_faults=25,
-            average_execution_latency_ms=500.0
+            average_execution_latency_ms=500.0,
+            topcombo=5,
+            tspins=2
         )
     )
     res = suggest_trainings(payload)
