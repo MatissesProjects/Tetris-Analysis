@@ -41,3 +41,5 @@ htmlcov/
 # Databases
 *.db
 
+# Test files
+test_replay.json
