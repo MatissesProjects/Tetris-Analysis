@@ -321,3 +321,39 @@ def test_suggest_trainings_finesse_calculation():
     suggestions_fallback = TrainingSuggester.suggest_trainings(stats_fallback)
     finesse_rewind_fallback = [s for s in suggestions_fallback if s["training_id"] == "finesse_rewind"][0]
     assert "finesse rate is 80.0%" in finesse_rewind_fallback["reason"]
+
+
+def test_suggest_combo_sustain():
+    """Verify that low topcombo suggests Combo Sustain Practice."""
+    stats = {
+        "pieces_placed": 20,
+        "topcombo": 3
+    }
+    suggestions = TrainingSuggester.suggest_trainings(stats)
+    assert any(s["training_id"] == "combo_sustain" for s in suggestions)
+    sugg = [s for s in suggestions if s["training_id"] == "combo_sustain"][0]
+    assert "highest combo was only 3" in sugg["reason"]
+
+
+def test_suggest_quads_and_tspins_ratios():
+    """Verify that low quads ratio and low T-spin ratio trigger boosts and custom reasoning."""
+    stats = {
+        "pieces_placed": 40,
+        "lines": 12,
+        "clears": {
+            "quads": 0,
+            "singles": 12
+        },
+        "tspins": 0
+    }
+    suggestions = TrainingSuggester.suggest_trainings(stats)
+    # Verify Attack Optimization is suggested for quads
+    assert any(s["training_id"] == "attack_optimization" for s in suggestions)
+    attack_sugg = [s for s in suggestions if s["training_id"] == "attack_optimization"][0]
+    assert "Only 0 of your clears were Quads" in attack_sugg["reason"]
+
+    # Verify Special Spins Mastery is suggested for T-Spins
+    assert any(s["training_id"] == "special_spins_mastery" for s in suggestions)
+    spins_sugg = [s for s in suggestions if s["training_id"] == "special_spins_mastery"][0]
+    assert "completed only 0 T-Spins" in spins_sugg["reason"]
+

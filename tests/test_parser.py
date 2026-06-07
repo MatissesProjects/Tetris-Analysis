@@ -87,3 +87,43 @@ def test_parse_real_ttr_file():
         assert stats.get("finesse_faults") == 28
         assert stats.get("finesse_perfect_pieces") == 84
         assert stats.get("pieces") == 106
+
+
+def test_parser_extracts_clears_spins_combos():
+    """Verify that clears, spins, and combo stats are successfully extracted by the parser."""
+    mock_data = {
+        "replay": {
+            "results": {
+                "stats": {
+                    "score": 120000,
+                    "lines": 40,
+                    "piecesplaced": 100,
+                    "clears": {
+                        "singles": 5,
+                        "doubles": 2,
+                        "triples": 1,
+                        "quads": 7,
+                        "tspindoubles": 3
+                    },
+                    "topcombo": 6,
+                    "topbtb": 4,
+                    "tspins": 5
+                },
+                "aggregatestats": {
+                    "pps": 1.8,
+                    "apm": 30.5,
+                    "vsscore": 65.4
+                }
+            }
+        }
+    }
+    metadata = TTRParser.extract_metadata(mock_data)
+    stats = metadata.get("stats", {})
+    
+    assert stats.get("topcombo") == 6
+    assert stats.get("topbtb") == 4
+    assert stats.get("tspins") == 5
+    assert stats.get("vsscore") == 65.4
+    assert stats.get("clears", {}).get("quads") == 7
+    assert stats.get("clears", {}).get("tspindoubles") == 3
+
