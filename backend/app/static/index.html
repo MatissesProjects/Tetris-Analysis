@@ -601,6 +601,40 @@
             padding: 2rem 0;
             font-size: 0.9rem;
         }
+        .clear-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.85rem;
+        }
+        .clear-bar-label {
+            width: 85px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-align: left;
+        }
+        .clear-bar-bg {
+            flex-grow: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .clear-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .clear-bar-val {
+            width: 30px;
+            text-align: right;
+            font-weight: bold;
+            font-family: 'Space Grotesk', sans-serif;
+        }
     </style>
 </head>
 <body>
@@ -708,6 +742,88 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Combos & Offense Card -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2>Combos & Offense</h2>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Spikes</span>
+                    </div>
+                    <div class="stats-list">
+                        <div class="stat-item">
+                            <span class="stat-label">Max Combo</span>
+                            <span class="stat-value highlight-cyan" id="statMaxCombo">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Max B2B Chain</span>
+                            <span class="stat-value highlight-magenta" id="statMaxB2b">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">T-Spins Total</span>
+                            <span class="stat-value highlight-purple" id="statTspins">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Quads Cleared</span>
+                            <span class="stat-value highlight-cyan" id="statQuads">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Clears & Spins Breakdown Card -->
+                <div class="glass-card" style="grid-column: span 2;">
+                    <div class="card-header">
+                        <h2>Clears & Spins Breakdown</h2>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Detailed Counts</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 0.5rem;">
+                        <div>
+                            <h4 style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;">Line Clears</h4>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">Singles</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillSingles" style="background: #94a3b8;"></div></div>
+                                <span class="clear-bar-val" id="valSingles">0</span>
+                            </div>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">Doubles</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillDoubles" style="background: #9d4edd;"></div></div>
+                                <span class="clear-bar-val" id="valDoubles">0</span>
+                            </div>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">Triples</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillTriples" style="background: #f107a3;"></div></div>
+                                <span class="clear-bar-val" id="valTriples">0</span>
+                            </div>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">Quads</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillQuads" style="background: linear-gradient(90deg, #00f2fe, #f107a3);"></div></div>
+                                <span class="clear-bar-val" id="valQuads">0</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;">T-Spins</h4>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">TSD (Double)</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillTsd" style="background: #00f2fe;"></div></div>
+                                <span class="clear-bar-val" id="valTsd">0</span>
+                            </div>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">TST (Triple)</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillTst" style="background: #f107a3;"></div></div>
+                                <span class="clear-bar-val" id="valTst">0</span>
+                            </div>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">TSS (Single)</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillTss" style="background: #9d4edd;"></div></div>
+                                <span class="clear-bar-val" id="valTss">0</span>
+                            </div>
+                            <div class="clear-bar-container">
+                                <span class="clear-bar-label">Mini Spins</span>
+                                <div class="clear-bar-bg"><div class="clear-bar-fill" id="fillMini" style="background: #64748b;"></div></div>
+                                <span class="clear-bar-val" id="valMini">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Progression & Analytics Grid -->
@@ -722,6 +838,8 @@
                             <button class="chart-btn" onclick="switchChartMetric('pps')">PPS</button>
                             <button class="chart-btn" onclick="switchChartMetric('apm')">APM</button>
                             <button class="chart-btn" onclick="switchChartMetric('finesse_rate')">Finesse</button>
+                            <button class="chart-btn" onclick="switchChartMetric('topcombo')">Combo</button>
+                            <button class="chart-btn" onclick="switchChartMetric('tspins')">T-Spins</button>
                         </div>
                     </div>
                     <div style="position: relative; height: 250px; width: 100%;">
@@ -872,6 +990,61 @@
             document.getElementById('statScore').textContent = (stats.score || ext.score || 0).toLocaleString();
             document.getElementById('statFinesseRate').textContent = fRate.toFixed(1) + '%';
 
+            // Populate Combo, B2B, T-Spins, Quads
+            const topComboVal = ext.topcombo !== undefined ? ext.topcombo : (stats.topcombo || 0);
+            const topBtbVal = ext.topbtb !== undefined ? ext.topbtb : (stats.topbtb || 0);
+            const tspinsVal = ext.tspins !== undefined ? ext.tspins : (stats.tspins || 0);
+            const quadsVal = ext.quads !== undefined ? ext.quads : (stats.quads || 0);
+
+            document.getElementById('statMaxCombo').textContent = topComboVal;
+            document.getElementById('statMaxB2b').textContent = topBtbVal;
+            document.getElementById('statTspins').textContent = tspinsVal;
+            document.getElementById('statQuads').textContent = quadsVal;
+
+            // Detailed clears breakdown
+            let clearsObj = ext.clears || stats.clears || {};
+            // If clears_json is available, parse it
+            if (typeof clearsObj === 'string') {
+                try { clearsObj = JSON.parse(clearsObj); } catch(e) { clearsObj = {}; }
+            } else if (ext.clears_json) {
+                try { clearsObj = JSON.parse(ext.clears_json); } catch(e) { clearsObj = {}; }
+            } else if (stats.clears_json) {
+                try { clearsObj = JSON.parse(stats.clears_json); } catch(e) { clearsObj = {}; }
+            }
+            const singles = clearsObj.singles || 0;
+            const doubles = clearsObj.doubles || 0;
+            const triples = clearsObj.triples || 0;
+            const quadsClear = clearsObj.quads || 0;
+
+            document.getElementById('valSingles').textContent = singles;
+            document.getElementById('valDoubles').textContent = doubles;
+            document.getElementById('valTriples').textContent = triples;
+            document.getElementById('valQuads').textContent = quadsClear;
+
+            // Detailed spins breakdown
+            const tsd = clearsObj.tspindoubles || 0;
+            const tst = clearsObj.tspintriples || 0;
+            const tss = clearsObj.tspinsingles || 0;
+            const mini = (clearsObj.minitspins || 0) + (clearsObj.minitspinsingles || 0) + (clearsObj.minitspindoubles || 0) + (clearsObj.minitspintriples || 0);
+
+            document.getElementById('valTsd').textContent = tsd;
+            document.getElementById('valTst').textContent = tst;
+            document.getElementById('valTss').textContent = tss;
+            document.getElementById('valMini').textContent = mini;
+
+            // Fill bars based on proportions (relative to maximum type cleared)
+            const maxClear = Math.max(singles, doubles, triples, quadsClear, 1);
+            document.getElementById('fillSingles').style.width = (singles / maxClear * 100) + '%';
+            document.getElementById('fillDoubles').style.width = (doubles / maxClear * 100) + '%';
+            document.getElementById('fillTriples').style.width = (triples / maxClear * 100) + '%';
+            document.getElementById('fillQuads').style.width = (quadsClear / maxClear * 100) + '%';
+
+            const maxSpin = Math.max(tsd, tst, tss, mini, 1);
+            document.getElementById('fillTsd').style.width = (tsd / maxSpin * 100) + '%';
+            document.getElementById('fillTst').style.width = (tst / maxSpin * 100) + '%';
+            document.getElementById('fillTss').style.width = (tss / maxSpin * 100) + '%';
+            document.getElementById('fillMini').style.width = (mini / maxSpin * 100) + '%';
+
             // Populate Suggestions
             const container = document.getElementById('recommendationsContainer');
             container.innerHTML = '';
@@ -973,6 +1146,8 @@
                                     if (activeMetric === 'pps') return `PPS: ${val.toFixed(2)}`;
                                     if (activeMetric === 'apm') return `APM: ${val.toFixed(1)}`;
                                     if (activeMetric === 'finesse_rate') return `Finesse Rate: ${(val * 100).toFixed(1)}%`;
+                                    if (activeMetric === 'topcombo') return `Max Combo: ${val}`;
+                                    if (activeMetric === 'tspins') return `T-Spins: ${val}`;
                                     return val;
                                 }
                             }
@@ -1031,6 +1206,16 @@
                     color: '#10b981',
                     gradColor: 'rgba(16, 185, 129, 0.3)',
                     label: 'Finesse Rate'
+                },
+                topcombo: {
+                    color: '#ffb703',
+                    gradColor: 'rgba(255, 183, 3, 0.3)',
+                    label: 'Max Combo'
+                },
+                tspins: {
+                    color: '#ff007f',
+                    gradColor: 'rgba(255, 0, 127, 0.3)',
+                    label: 'T-Spins'
                 }
             };
             
@@ -1065,6 +1250,8 @@
                 if (activeMetric === 'pps') return item.pps;
                 if (activeMetric === 'apm') return item.apm;
                 if (activeMetric === 'finesse_rate') return item.finesse_rate;
+                if (activeMetric === 'topcombo') return item.topcombo !== undefined ? item.topcombo : 0;
+                if (activeMetric === 'tspins') return item.tspins !== undefined ? item.tspins : 0;
                 return 0;
             });
             
@@ -1139,6 +1326,8 @@
                             <span>APM: ${record.apm.toFixed(1)}</span>
                             <span>VS: ${(record.vsscore !== undefined && record.vsscore !== null ? record.vsscore : (record.apm + record.pps * 20)).toFixed(1)}</span>
                             <span>Finesse: ${(record.finesse_rate * 100).toFixed(1)}%</span>
+                            <span>Combo: ${record.topcombo || 0}</span>
+                            <span>T-Spins: ${record.tspins || 0}</span>
                         </div>
                         <span class="history-date">${dateStr} ${record.replay_name ? `(${escapeHtml(record.replay_name)})` : ''}</span>
                     </div>
