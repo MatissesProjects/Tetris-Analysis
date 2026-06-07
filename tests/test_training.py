@@ -34,11 +34,12 @@ def test_suggest_finesse_rewind():
     stats = {
         "pieces_placed": 100,
         "finesse_faults": 20,  # 20% fault rate
+        "finesse_rate": 0.80,
     }
     suggestions = TrainingSuggester.suggest_trainings(stats)
     assert len(suggestions) >= 1
     assert suggestions[0]["training_id"] == "finesse_rewind"
-    assert "finesse fault rate is 20.0%" in suggestions[0]["reason"]
+    assert "finesse rate is 80.0%" in suggestions[0]["reason"]
 
 
 def test_suggest_lookahead_mask():
@@ -124,6 +125,7 @@ def test_suggest_finesse_sprint():
         "pieces_placed": 100,
         "pps": 2.2,
         "finesse_faults": 8,  # 8% fault rate
+        "finesse_rate": 0.08,
     }
     suggestions_a = TrainingSuggester.suggest_trainings(stats_a)
     assert any(s["training_id"] == "finesse_sprint" for s in suggestions_a)
@@ -133,6 +135,7 @@ def test_suggest_finesse_sprint():
         "pieces_placed": 50,
         "pps": 1.5,
         "finesse_faults": 1,  # 2% fault rate
+        "finesse_rate": 0.02,
     }
     suggestions_b = TrainingSuggester.suggest_trainings(stats_b)
     assert any(s["training_id"] == "finesse_sprint" for s in suggestions_b)
