@@ -65,6 +65,11 @@ class GameStatsPayload(BaseModel):
     kpp: Optional[float] = Field(None, description="Average keys per piece (KPP) alias")
     double_rotations: Optional[int] = Field(None, description="Count of double 90-degree rotations in a game")
     rotate180_count: Optional[int] = Field(None, description="Count of direct 180-degree rotations used")
+    topcombo: Optional[int] = Field(None, description="Maximum combo reached")
+    topbtb: Optional[int] = Field(None, description="Maximum Back-to-Back chain length reached")
+    tspins: Optional[int] = Field(None, description="Total T-Spins completed")
+    quads: Optional[int] = Field(None, description="Total Quads completed")
+    clears_json: Optional[str] = Field(None, description="Serialized clears dictionary")
 
 class SuggestPayload(BaseModel):
     username: Optional[str] = Field("Player", description="Username of the player")
@@ -81,6 +86,11 @@ class ScoreCreatePayload(BaseModel):
     lines_cleared: int = Field(..., description="Total lines cleared")
     replay_name: Optional[str] = Field(None, description="Optional name of the replay file")
     vsscore: float = Field(0.0, description="VS Score of the run")
+    topcombo: int = Field(0, description="Maximum combo reached")
+    topbtb: int = Field(0, description="Maximum Back-to-Back chain length reached")
+    tspins: int = Field(0, description="Total T-Spins completed")
+    quads: int = Field(0, description="Total Quads completed")
+    clears_json: Optional[str] = Field(None, description="Serialized clears breakdown dictionary")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -413,6 +423,20 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
             vsscore = apm + pps * 20
         vsscore = round(float(vsscore), 2)
         merged_stats["vsscore"] = vsscore
+
+        topcombo = int(merged_stats.get("topcombo") or 0)
+        topbtb = int(merged_stats.get("topbtb") or 0)
+        tspins = int(merged_stats.get("tspins") or 0)
+        clears_dict = merged_stats.get("clears") or {}
+        quads = int(clears_dict.get("quads") or 0)
+        clears_json = json.dumps(clears_dict) if clears_dict else None
+
+        # Add to merged_stats for response payload
+        merged_stats["topcombo"] = topcombo
+        merged_stats["topbtb"] = topbtb
+        merged_stats["tspins"] = tspins
+        merged_stats["quads"] = quads
+        merged_stats["clears_json"] = clears_json
         
         add_score(
             username=username,
@@ -424,7 +448,12 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
             pieces_placed=pieces_placed,
             lines_cleared=lines_cleared,
             replay_name=file.filename,
-            vsscore=vsscore
+            vsscore=vsscore,
+            topcombo=topcombo,
+            topbtb=topbtb,
+            tspins=tspins,
+            quads=quads,
+            clears_json=clears_json
         )
     except Exception as e:
         print(f"Failed to auto-save score to history: {e}")
@@ -465,7 +494,12 @@ def create_score(payload: ScoreCreatePayload):
             pieces_placed=payload.pieces_placed,
             lines_cleared=payload.lines_cleared,
             replay_name=payload.replay_name,
-            vsscore=payload.vsscore
+            vsscore=payload.vsscore,
+            topcombo=payload.topcombo,
+            topbtb=payload.topbtb,
+            tspins=payload.tspins,
+            quads=payload.quads,
+            clears_json=payload.clears_json
         )
         return {"status": "success", "id": new_id}
     except Exception as e:
