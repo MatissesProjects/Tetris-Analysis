@@ -363,7 +363,8 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
     events = parsed_replay.get("events", [])
     event_stats = TrainingSuggester.parse_events_for_stats(events)
     
-    merged_stats = {**meta_stats, **event_stats}
+    # Prioritize official game metadata (which includes accurate finesse fault tracking) over event-parsed heuristics
+    merged_stats = {**event_stats, **meta_stats}
     
     suggestions = TrainingSuggester.suggest_trainings(merged_stats)
     
