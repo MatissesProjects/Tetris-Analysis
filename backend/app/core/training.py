@@ -107,6 +107,17 @@ TRAINING_MODES = {
             "target_uses": 10,
             "allow_double_tap": False
         }
+    },
+    "combo_sustain": {
+        "id": "combo_sustain",
+        "name": "Combo Sustain Practice",
+        "description": "Train on maintaining continuous downstack/upstack combos without breaking the chain.",
+        "benefits": "Increases average combo length, optimizes downstack efficiency, and maximizes attack multiplier.",
+        "default_config": {
+            "target_combo": 5,
+            "allow_holes": True,
+            "stack_height": 4
+        }
     }
 }
 
@@ -140,6 +151,12 @@ class TrainingSuggester:
         kpp = float(stats.get("keystrokes_per_piece") or stats.get("kpp") or 0.0)
         double_rotations = int(stats.get("double_rotations") or 0)
         rotate180_count = int(stats.get("rotate180_count") or 0)
+        
+        # New extracted statistics
+        clears = stats.get("clears") or {}
+        topcombo = int(stats.get("topcombo") or 0)
+        topbtb = int(stats.get("topbtb") or 0)
+        tspins = int(stats.get("tspins") or 0)
 
         # Resolve finesse faults safely
         finesse_faults = stats.get("finesse_faults")
@@ -340,6 +357,65 @@ class TrainingSuggester:
                 "reason": reason,
                 "config": TRAINING_MODES["rotate180_mastery"]["default_config"]
             })
+
+        # -- RULE 11: Combo Sustain Practice --
+        # Triggered when topcombo is low (< 5) and pieces_placed >= 15
+        if pieces_placed >= 15 and topcombo < 5:
+            score = (5 - topcombo) * 15.0
+            reason = (
+                f"Your highest combo was only {topcombo} in this run (target is 5+). "
+                "Practicing Combo Sustain will help you stack cleanly to sustain longer combo chains."
+            )
+            recommendations.append({
+                "training_id": "combo_sustain",
+                "score": round(score, 1),
+                "reason": reason,
+                "config": TRAINING_MODES["combo_sustain"]["default_config"]
+            })
+
+        # -- RULE 12: Quads Clear Ratio check (Attack Optimization boost) --
+        quads = int(clears.get("quads") or stats.get("quads") or 0)
+        lines = int(stats.get("lines") or stats.get("lines_cleared") or 0)
+        if lines >= 10 and (quads * 4 / lines) < 0.20:
+            quad_pct = (quads * 4 / lines)
+            score = 30.0 + (0.20 - quad_pct) * 100.0
+            reason = (
+                f"Only {quads} of your clears were Quads (representing {quad_pct:.1%} of your cleared lines). "
+                "We recommend Attack Optimization to focus on cleaner vertical stacking for Quads and maintaining Back-to-Back status."
+            )
+            # Boost existing if present
+            attack_opt = next((r for r in recommendations if r["training_id"] == "attack_optimization"), None)
+            if attack_opt:
+                attack_opt["score"] = max(attack_opt["score"], round(score, 1))
+                attack_opt["reason"] = reason + " " + attack_opt["reason"]
+            else:
+                recommendations.append({
+                    "training_id": "attack_optimization",
+                    "score": round(score, 1),
+                    "reason": reason,
+                    "config": TRAINING_MODES["attack_optimization"]["default_config"]
+                })
+
+        # -- RULE 13: T-Spins Clear Count check (Special Spins Mastery boost) --
+        tspin_ratio = tspins / pieces_placed if pieces_placed > 0 else 0.0
+        if pieces_placed >= 20 and (tspins < 2 or tspin_ratio < 0.02):
+            score = 35.0 + (2 - tspins) * 10.0
+            reason = (
+                f"You completed only {tspins} T-Spins during this session. "
+                "Practicing Special Spins Mastery will teach you how to identify and construct T-Spin opportunities (TSD/TST) and leverage S/Z-spin kicks."
+            )
+            # Boost existing if present
+            spins_opt = next((r for r in recommendations if r["training_id"] == "special_spins_mastery"), None)
+            if spins_opt:
+                spins_opt["score"] = max(spins_opt["score"], round(score, 1))
+                spins_opt["reason"] = reason + " " + spins_opt["reason"]
+            else:
+                recommendations.append({
+                    "training_id": "special_spins_mastery",
+                    "score": round(score, 1),
+                    "reason": reason,
+                    "config": TRAINING_MODES["special_spins_mastery"]["default_config"]
+                })
 
         # Sort by score descending
         recommendations.sort(key=lambda x: x["score"], reverse=True)
