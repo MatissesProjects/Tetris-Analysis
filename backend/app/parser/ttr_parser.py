@@ -120,7 +120,7 @@ class TTRParser:
             
         # Try to extract general match statistics
         stats = {}
-        target_stats = ["score", "lines", "pieces", "pps", "apm", "time"]
+        target_stats = ["score", "lines", "pieces", "pps", "apm", "time", "vsscore", "vs"]
         
         # Look in root or data.stats
         stats_source = data.get("stats", {})
@@ -134,6 +134,8 @@ class TTRParser:
             for k in target_stats:
                 if k in stats_source:
                     stats[k] = stats_source[k]
+            if "vs" in stats and "vsscore" not in stats:
+                stats["vsscore"] = stats["vs"]
 
         # Look in replay.results.stats or replay.results.aggregatestats
         replay = data.get("replay", {})
@@ -152,11 +154,19 @@ class TTRParser:
                     if "finesse" in r_stats and isinstance(r_stats["finesse"], dict):
                         stats["finesse_faults"] = r_stats["finesse"].get("faults")
                         stats["finesse_perfect_pieces"] = r_stats["finesse"].get("perfectpieces")
+                    if "vsscore" in r_stats:
+                        stats["vsscore"] = r_stats["vsscore"]
+                    elif "vs" in r_stats:
+                        stats["vsscore"] = r_stats["vs"]
                 if isinstance(agg_stats, dict):
                     if "pps" in agg_stats:
                         stats["pps"] = agg_stats["pps"]
                     if "apm" in agg_stats:
                         stats["apm"] = agg_stats["apm"]
+                    if "vsscore" in agg_stats:
+                        stats["vsscore"] = agg_stats["vsscore"]
+                    elif "vs" in agg_stats:
+                        stats["vsscore"] = agg_stats["vs"]
                     
         metadata["stats"] = stats
         return metadata
