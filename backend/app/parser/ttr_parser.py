@@ -158,6 +158,18 @@ class TTRParser:
                         stats["vsscore"] = r_stats["vsscore"]
                     elif "vs" in r_stats:
                         stats["vsscore"] = r_stats["vs"]
+                    if "clears" in r_stats:
+                        stats["clears"] = r_stats["clears"]
+                    if "topcombo" in r_stats:
+                        stats["topcombo"] = r_stats["topcombo"]
+                    elif "combo" in r_stats:
+                        stats["topcombo"] = r_stats["combo"]
+                    if "topbtb" in r_stats:
+                        stats["topbtb"] = r_stats["topbtb"]
+                    elif "btb" in r_stats:
+                        stats["topbtb"] = r_stats["btb"]
+                    if "tspins" in r_stats:
+                        stats["tspins"] = r_stats["tspins"]
                 if isinstance(agg_stats, dict):
                     if "pps" in agg_stats:
                         stats["pps"] = agg_stats["pps"]

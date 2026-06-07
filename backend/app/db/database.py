@@ -26,15 +26,30 @@ def init_db():
                 lines_cleared INTEGER NOT NULL,
                 timestamp TEXT NOT NULL,
                 replay_name TEXT,
-                vsscore REAL DEFAULT 0.0
+                vsscore REAL DEFAULT 0.0,
+                topcombo INTEGER DEFAULT 0,
+                topbtb INTEGER DEFAULT 0,
+                tspins INTEGER DEFAULT 0,
+                quads INTEGER DEFAULT 0,
+                clears_json TEXT
             )
         """)
-        # Run migration if vsscore column is missing
+        # Run migration if columns are missing
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(scores)")
         columns = [row["name"] for row in cursor.fetchall()]
         if "vsscore" not in columns:
             conn.execute("ALTER TABLE scores ADD COLUMN vsscore REAL DEFAULT 0.0")
+        if "topcombo" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN topcombo INTEGER DEFAULT 0")
+        if "topbtb" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN topbtb INTEGER DEFAULT 0")
+        if "tspins" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN tspins INTEGER DEFAULT 0")
+        if "quads" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN quads INTEGER DEFAULT 0")
+        if "clears_json" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN clears_json TEXT")
         conn.commit()
 
 def add_score(
@@ -48,7 +63,12 @@ def add_score(
     lines_cleared: int,
     replay_name: Optional[str] = None,
     timestamp: Optional[str] = None,
-    vsscore: float = 0.0
+    vsscore: float = 0.0,
+    topcombo: int = 0,
+    topbtb: int = 0,
+    tspins: int = 0,
+    quads: int = 0,
+    clears_json: Optional[str] = None
 ) -> int:
     """
     Adds a new score record to the database.
@@ -63,12 +83,14 @@ def add_score(
             """
             INSERT INTO scores (
                 username, score, pps, apm, finesse_faults, finesse_rate, 
-                pieces_placed, lines_cleared, timestamp, replay_name, vsscore
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pieces_placed, lines_cleared, timestamp, replay_name, vsscore,
+                topcombo, topbtb, tspins, quads, clears_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 username, score, pps, apm, finesse_faults, finesse_rate,
-                pieces_placed, lines_cleared, timestamp, replay_name, vsscore
+                pieces_placed, lines_cleared, timestamp, replay_name, vsscore,
+                topcombo, topbtb, tspins, quads, clears_json
             )
         )
         conn.commit()
