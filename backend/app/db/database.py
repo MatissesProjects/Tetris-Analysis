@@ -25,9 +25,16 @@ def init_db():
                 pieces_placed INTEGER NOT NULL,
                 lines_cleared INTEGER NOT NULL,
                 timestamp TEXT NOT NULL,
-                replay_name TEXT
+                replay_name TEXT,
+                vsscore REAL DEFAULT 0.0
             )
         """)
+        # Run migration if vsscore column is missing
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(scores)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "vsscore" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN vsscore REAL DEFAULT 0.0")
         conn.commit()
 
 def add_score(
@@ -40,7 +47,8 @@ def add_score(
     pieces_placed: int,
     lines_cleared: int,
     replay_name: Optional[str] = None,
-    timestamp: Optional[str] = None
+    timestamp: Optional[str] = None,
+    vsscore: float = 0.0
 ) -> int:
     """
     Adds a new score record to the database.
@@ -55,12 +63,12 @@ def add_score(
             """
             INSERT INTO scores (
                 username, score, pps, apm, finesse_faults, finesse_rate, 
-                pieces_placed, lines_cleared, timestamp, replay_name
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pieces_placed, lines_cleared, timestamp, replay_name, vsscore
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 username, score, pps, apm, finesse_faults, finesse_rate,
-                pieces_placed, lines_cleared, timestamp, replay_name
+                pieces_placed, lines_cleared, timestamp, replay_name, vsscore
             )
         )
         conn.commit()
