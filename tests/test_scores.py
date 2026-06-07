@@ -29,7 +29,8 @@ def test_scores_crud():
         "finesse_rate": 0.92,
         "pieces_placed": 250,
         "lines_cleared": 100,
-        "replay_name": "match_1.ttr"
+        "replay_name": "match_1.ttr",
+        "vsscore": 95.0
     }
     response = client.post("/api/v1/scores", json=score_data)
     assert response.status_code == 200
@@ -43,6 +44,7 @@ def test_scores_crud():
     assert len(scores) == 1
     assert scores[0]["username"] == "Matisse"
     assert scores[0]["score"] == 500000
+    assert scores[0]["vsscore"] == 95.0
     assert scores[0]["id"] == score_id
 
     # 4. Delete the score

@@ -80,6 +80,7 @@ class ScoreCreatePayload(BaseModel):
     pieces_placed: int = Field(..., description="Total pieces placed")
     lines_cleared: int = Field(..., description="Total lines cleared")
     replay_name: Optional[str] = Field(None, description="Optional name of the replay file")
+    vsscore: float = Field(0.0, description="VS Score of the run")
 
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
@@ -406,6 +407,13 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
         pieces_placed = int(merged_stats.get("pieces_placed") or merged_stats.get("pieces") or 0)
         lines_cleared = int(merged_stats.get("lines") or merged_stats.get("lines_cleared") or 0)
         
+        vsscore = merged_stats.get("vsscore")
+        if vsscore is None:
+            # Fallback VS score calculation: APM + PPS * 20
+            vsscore = apm + pps * 20
+        vsscore = round(float(vsscore), 2)
+        merged_stats["vsscore"] = vsscore
+        
         add_score(
             username=username,
             score=score,
@@ -415,7 +423,8 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
             finesse_rate=finesse_rate,
             pieces_placed=pieces_placed,
             lines_cleared=lines_cleared,
-            replay_name=file.filename
+            replay_name=file.filename,
+            vsscore=vsscore
         )
     except Exception as e:
         print(f"Failed to auto-save score to history: {e}")
@@ -455,7 +464,8 @@ def create_score(payload: ScoreCreatePayload):
             finesse_rate=payload.finesse_rate,
             pieces_placed=payload.pieces_placed,
             lines_cleared=payload.lines_cleared,
-            replay_name=payload.replay_name
+            replay_name=payload.replay_name,
+            vsscore=payload.vsscore
         )
         return {"status": "success", "id": new_id}
     except Exception as e:
