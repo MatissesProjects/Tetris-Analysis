@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnGhost = document.getElementById("btnGhost");
   const btnBlind = document.getElementById("btnBlind");
   const chkHeuristic = document.getElementById("chkHeuristic");
+  const chkSpawnBlind = document.getElementById("chkSpawnBlind");
+  const chkHesitation = document.getElementById("chkHesitation");
+  const chkQueuePointer = document.getElementById("chkQueuePointer");
   const btnCalibrate = document.getElementById("btnCalibrate");
 
   let currentMode = "ghost";
@@ -15,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Load saved configurations
   chrome.storage.local.get(
-    ["maskEnabled", "maskMode", "heuristicEnabled", "wsConnected", "isCalibrating"],
+    ["maskEnabled", "maskMode", "heuristicEnabled", "wsConnected", "isCalibrating", "spawnBlindEnabled", "hesitationEnabled", "queuePointerEnabled"],
     (result) => {
       // Default configurations if not set
       const maskEnabled = result.maskEnabled !== undefined ? result.maskEnabled : false;
@@ -23,10 +26,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const heuristicEnabled = result.heuristicEnabled !== undefined ? result.heuristicEnabled : true;
       const wsConnected = result.wsConnected !== undefined ? result.wsConnected : false;
       isCalibrating = result.isCalibrating !== undefined ? result.isCalibrating : false;
+      const spawnBlindEnabled = result.spawnBlindEnabled !== undefined ? result.spawnBlindEnabled : false;
+      const hesitationEnabled = result.hesitationEnabled !== undefined ? result.hesitationEnabled : false;
+      const queuePointerEnabled = result.queuePointerEnabled !== undefined ? result.queuePointerEnabled : false;
 
       // Update UI elements
       chkMask.checked = maskEnabled;
       chkHeuristic.checked = heuristicEnabled;
+      chkSpawnBlind.checked = spawnBlindEnabled;
+      chkHesitation.checked = hesitationEnabled;
+      chkQueuePointer.checked = queuePointerEnabled;
       updateModeButtons(currentMode);
       updateConnectionStatus(wsConnected);
       updateCalibrationButton(isCalibrating);
@@ -68,6 +77,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const enabled = chkHeuristic.checked;
     chrome.storage.local.set({ heuristicEnabled: enabled });
     broadcastSettingsChange({ heuristicEnabled: enabled });
+  });
+
+  // Toggle Spawn Blindness Cover
+  chkSpawnBlind.addEventListener("change", () => {
+    const enabled = chkSpawnBlind.checked;
+    chrome.storage.local.set({ spawnBlindEnabled: enabled });
+    broadcastSettingsChange({ spawnBlindEnabled: enabled });
+  });
+
+  // Toggle Hesitation Glow
+  chkHesitation.addEventListener("change", () => {
+    const enabled = chkHesitation.checked;
+    chrome.storage.local.set({ hesitationEnabled: enabled });
+    broadcastSettingsChange({ hesitationEnabled: enabled });
+  });
+
+  // Toggle Queue Pointer
+  chkQueuePointer.addEventListener("change", () => {
+    const enabled = chkQueuePointer.checked;
+    chrome.storage.local.set({ queuePointerEnabled: enabled });
+    broadcastSettingsChange({ queuePointerEnabled: enabled });
   });
 
   // Toggle Overlay Calibration

@@ -8,7 +8,10 @@ chrome.runtime.onInstalled.addListener(() => {
     maskMode: "ghost",
     heuristicEnabled: true,
     wsConnected: false,
-    isCalibrating: false
+    isCalibrating: false,
+    spawnBlindEnabled: false,
+    hesitationEnabled: false,
+    queuePointerEnabled: false
   });
 });
 

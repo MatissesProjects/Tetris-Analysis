@@ -9,23 +9,37 @@
     maskEnabled: false,
     maskMode: "ghost",
     heuristicEnabled: true,
-    isCalibrating: false
+    isCalibrating: false,
+    spawnBlindEnabled: false,
+    hesitationEnabled: false,
+    queuePointerEnabled: false
   };
 
   // Keyboard telemetry tracking
   let startFrame = 0;
   let currentKeyStates = {};
 
-  // Initialize
-  chrome.storage.local.get(["maskEnabled", "maskMode", "heuristicEnabled", "isCalibrating"], (result) => {
-    settings.maskEnabled = result.maskEnabled !== undefined ? result.maskEnabled : false;
-    settings.maskMode = result.maskMode || "ghost";
-    settings.heuristicEnabled = result.heuristicEnabled !== undefined ? result.heuristicEnabled : true;
-    settings.isCalibrating = result.isCalibrating !== undefined ? result.isCalibrating : false;
+  // Hesitation alert state variables
+  let lastSpawnTime = Date.now();
+  let firstInputMade = false;
+  let hesitationTimer = null;
 
-    createOverlay();
-    applySettings();
-  });
+  // Initialize
+  chrome.storage.local.get(
+    ["maskEnabled", "maskMode", "heuristicEnabled", "isCalibrating", "spawnBlindEnabled", "hesitationEnabled", "queuePointerEnabled"],
+    (result) => {
+      settings.maskEnabled = result.maskEnabled !== undefined ? result.maskEnabled : false;
+      settings.maskMode = result.maskMode || "ghost";
+      settings.heuristicEnabled = result.heuristicEnabled !== undefined ? result.heuristicEnabled : true;
+      settings.isCalibrating = result.isCalibrating !== undefined ? result.isCalibrating : false;
+      settings.spawnBlindEnabled = result.spawnBlindEnabled !== undefined ? result.spawnBlindEnabled : false;
+      settings.hesitationEnabled = result.hesitationEnabled !== undefined ? result.hesitationEnabled : false;
+      settings.queuePointerEnabled = result.queuePointerEnabled !== undefined ? result.queuePointerEnabled : false;
+
+      createOverlay();
+      applySettings();
+    }
+  );
 
   // Listen to popup settings updates
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -105,6 +119,50 @@
         background-color: rgba(0, 0, 0, 0) !important;
         border: 2px solid rgba(6, 182, 212, 0.6) !important;
         box-shadow: 0 0 15px rgba(6, 182, 212, 0.3) !important;
+      }
+
+      .aegis-mask.hesitation-glow {
+        border: 2px solid #f59e0b !important;
+        box-shadow: 0 0 20px #f59e0b !important;
+      }
+
+      .spawn-blind-cover {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 25%;
+        background-color: #0d0915;
+        border-bottom: 2px solid #ef4444;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        z-index: 5;
+        display: none;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+      }
+
+      .queue-pointer {
+        position: absolute;
+        right: -90px;
+        top: 25%;
+        padding: 6px 12px;
+        background: rgba(13, 9, 21, 0.9);
+        border: 1px solid #06b6d4;
+        box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+        border-radius: 6px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        color: #06b6d4;
+        text-shadow: 0 0 5px #06b6d4;
+        animation: pulseRight 1s infinite alternate;
+        pointer-events: none;
+        display: none;
+        z-index: 6;
+      }
+      @keyframes pulseRight {
+        from { transform: translateX(0); opacity: 0.5; }
+        to { transform: translateX(8px); opacity: 1; }
       }
 
       /* Calibration Controls */
@@ -221,6 +279,19 @@
     mask.className = "aegis-mask";
     mask.id = "aegisMask";
 
+    // Spawn Blindness Cover
+    const spawnCover = document.createElement("div");
+    spawnCover.className = "spawn-blind-cover";
+    spawnCover.id = "spawnBlindCover";
+    mask.appendChild(spawnCover);
+
+    // Queue Pointer Chevron
+    const queuePointer = document.createElement("div");
+    queuePointer.className = "queue-pointer";
+    queuePointer.id = "queuePointer";
+    queuePointer.innerHTML = "QUEUE ▶";
+    mask.appendChild(queuePointer);
+
     // Calibration box
     const calibration = document.createElement("div");
     calibration.className = "calibration-frame";
@@ -330,6 +401,8 @@
 
     const mask = shadowRoot.getElementById("aegisMask");
     const calibration = shadowRoot.getElementById("calibrationFrame");
+    const spawnCover = shadowRoot.getElementById("spawnBlindCover");
+    const queuePointer = shadowRoot.getElementById("queuePointer");
 
     // Mask display
     if (settings.maskEnabled) {
@@ -350,6 +423,20 @@
       } else {
         overlayContainer.style.pointerEvents = "none";
         calibration.style.display = "none";
+      }
+
+      // Toggle Spawn Blindness Overlay
+      if (settings.spawnBlindEnabled) {
+        spawnCover.style.display = "block";
+      } else {
+        spawnCover.style.display = "none";
+      }
+
+      // Toggle Queue Focus Pointer
+      if (settings.queuePointerEnabled) {
+        queuePointer.style.display = "block";
+      } else {
+        queuePointer.style.display = "none";
       }
     } else {
       overlayContainer.style.display = "none";
@@ -392,6 +479,42 @@
     "KeyA": "rotate180"
   };
 
+  // Hesitation check handler
+  function handleHesitationState(type, control) {
+    if (!settings.hesitationEnabled || !settings.maskEnabled) return;
+
+    const mask = shadowRoot.getElementById("aegisMask");
+    if (!mask) return;
+
+    if (control === "hardDrop" && type === "keydown") {
+      // Piece locked, new piece starts
+      firstInputMade = false;
+      lastSpawnTime = Date.now();
+      
+      // Clear old timers
+      if (hesitationTimer) {
+        clearTimeout(hesitationTimer);
+      }
+      mask.classList.remove("hesitation-glow");
+
+      // Start 200ms check
+      hesitationTimer = setTimeout(() => {
+        if (!firstInputMade && settings.hesitationEnabled && settings.maskEnabled) {
+          mask.classList.add("hesitation-glow");
+        }
+      }, 200);
+    } else if (control !== "hardDrop" && type === "keydown") {
+      // First input of the active piece clears hesitation
+      if (!firstInputMade) {
+        firstInputMade = true;
+        if (hesitationTimer) {
+          clearTimeout(hesitationTimer);
+        }
+        mask.classList.remove("hesitation-glow");
+      }
+    }
+  }
+
   // Keyboard capture event listeners
   window.addEventListener("keydown", (e) => {
     // If not enabled or calibrating, do not intercept inputs
@@ -400,6 +523,7 @@
     const control = CONTROL_MAP[e.code] || CONTROL_MAP[e.key];
     if (control && !currentKeyStates[control]) {
       currentKeyStates[control] = true;
+      handleHesitationState("keydown", control);
       sendTelemetryToBackground("keydown", control);
     }
   });
