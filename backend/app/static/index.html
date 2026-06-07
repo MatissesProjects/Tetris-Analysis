@@ -652,10 +652,12 @@
 
             const fFaults = ext.finesse_faults !== undefined ? ext.finesse_faults : (stats.finesse_faults || 0);
             const totalPieces = ext.pieces_placed || stats.pieces || 0;
-            const fRate = totalPieces > 0 ? (fFaults / totalPieces * 100) : 0.0;
+            const kppVal = ext.keystrokes_per_piece || 0;
+            const kptVal = kppVal * totalPieces;
+            const fRate = ext.finesse_rate !== undefined ? (ext.finesse_rate * 100) : (kptVal > 0 ? (Math.max(0, kptVal - fFaults) / kptVal * 100) : 100.0);
 
             document.getElementById('statFinesseFaults').textContent = fFaults;
-            document.getElementById('statKpp').textContent = (ext.keystrokes_per_piece || 0.0).toFixed(2);
+            document.getElementById('statKpp').textContent = kppVal.toFixed(2);
             document.getElementById('statScore').textContent = (stats.score || ext.score || 0).toLocaleString();
             document.getElementById('statFinesseRate').textContent = fRate.toFixed(1) + '%';
 

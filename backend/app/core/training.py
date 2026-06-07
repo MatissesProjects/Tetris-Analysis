@@ -154,18 +154,26 @@ class TrainingSuggester:
         finesse_faults = int(finesse_faults)
 
         # 1. Finesse Fault Rate calculation
-        finesse_rate = 0.0
+        finesse_rate = stats.get("finesse_rate")
+        if finesse_rate is None:
+            kpt = kpp * pieces_placed
+            if kpt > 0:
+                finesse_rate = max(0.0, (kpt - finesse_faults) / kpt)
+            else:
+                finesse_rate = 1.0
+        
+        piece_fault_rate = 0.0
         if pieces_placed > 0:
-            finesse_rate = finesse_faults / pieces_placed
+            piece_fault_rate = finesse_faults / pieces_placed
 
         recommendations = []
 
         # -- RULE 1: Finesse Rewind --
-        # Triggered when finesse fault rate > 15% or total faults is high
-        if finesse_rate > 0.15 or finesse_faults > 10:
-            score = finesse_rate * 100.0 + (finesse_faults * 0.5)
+        # Triggered when finesse rate < 0.95 or total faults is high
+        if finesse_rate < 0.95 or finesse_faults > 10:
+            score = piece_fault_rate * 100.0 + (finesse_faults * 0.5)
             reason = (
-                f"Your finesse fault rate is {finesse_rate:.1%} ({finesse_faults} faults across {pieces_placed} pieces). "
+                f"Your finesse rate is {finesse_rate:.1%} ({finesse_faults} faults across {pieces_placed} pieces). "
                 "Practicing Finesse Rewind will help you eliminate excessive inputs and build perfect SRS execution muscle memory."
             )
             recommendations.append({
