@@ -70,6 +70,17 @@ class SuggestPayload(BaseModel):
     username: Optional[str] = Field("Player", description="Username of the player")
     stats: GameStatsPayload = Field(..., description="Gameplay metrics")
 
+class ScoreCreatePayload(BaseModel):
+    username: str = Field(..., description="Player username")
+    score: int = Field(..., description="Final score of the run")
+    pps: float = Field(..., description="Pieces per second")
+    apm: float = Field(..., description="Attacks per minute")
+    finesse_faults: int = Field(..., description="Finesse faults")
+    finesse_rate: float = Field(..., description="Finesse rate (0.0 to 1.0)")
+    pieces_placed: int = Field(..., description="Total pieces placed")
+    lines_cleared: int = Field(..., description="Total lines cleared")
+    replay_name: Optional[str] = Field(None, description="Optional name of the replay file")
+
 @router.post("/parse-file")
 async def parse_replay_file(file: UploadFile = File(...)):
     """
@@ -378,11 +389,102 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
     
     suggestions = TrainingSuggester.suggest_trainings(merged_stats)
     
+    # Auto-save score to database history
+    try:
+        from app.db.database import add_score
+        username = parsed_replay.get("metadata", {}).get("username") or "Player"
+        score = int(merged_stats.get("score") or 0)
+        pps = float(merged_stats.get("pps") or 0.0)
+        apm = float(merged_stats.get("apm") or 0.0)
+        finesse_faults = int(merged_stats.get("finesse_faults") or 0)
+        finesse_rate = float(merged_stats.get("finesse_rate") or 1.0)
+        pieces_placed = int(merged_stats.get("pieces_placed") or merged_stats.get("pieces") or 0)
+        lines_cleared = int(merged_stats.get("lines") or merged_stats.get("lines_cleared") or 0)
+        
+        add_score(
+            username=username,
+            score=score,
+            pps=pps,
+            apm=apm,
+            finesse_faults=finesse_faults,
+            finesse_rate=finesse_rate,
+            pieces_placed=pieces_placed,
+            lines_cleared=lines_cleared,
+            replay_name=file.filename
+        )
+    except Exception as e:
+        print(f"Failed to auto-save score to history: {e}")
+    
     return {
         "metadata": parsed_replay.get("metadata", {}),
         "extracted_stats": merged_stats,
         "suggestions": suggestions
     }
+
+
+@router.get("/scores", response_model=List[Dict[str, Any]])
+def read_scores():
+    """
+    Get all stored scores in history, ordered chronologically.
+    """
+    try:
+        from app.db.database import get_scores
+        return get_scores()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch score history: {str(e)}")
+
+
+@router.post("/scores")
+def create_score(payload: ScoreCreatePayload):
+    """
+    Manually add a score entry to the database history.
+    """
+    try:
+        from app.db.database import add_score
+        new_id = add_score(
+            username=payload.username,
+            score=payload.score,
+            pps=payload.pps,
+            apm=payload.apm,
+            finesse_faults=payload.finesse_faults,
+            finesse_rate=payload.finesse_rate,
+            pieces_placed=payload.pieces_placed,
+            lines_cleared=payload.lines_cleared,
+            replay_name=payload.replay_name
+        )
+        return {"status": "success", "id": new_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add score to history: {str(e)}")
+
+
+@router.delete("/scores/clear")
+def clear_score_history():
+    """
+    Delete all scores from history.
+    """
+    try:
+        from app.db.database import clear_scores
+        clear_scores()
+        return {"status": "success", "message": "Score history cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear score history: {str(e)}")
+
+
+@router.delete("/scores/{score_id}")
+def delete_score_entry(score_id: int):
+    """
+    Delete a single score entry by ID.
+    """
+    try:
+        from app.db.database import delete_score
+        deleted = delete_score(score_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Score entry not found")
+        return {"status": "success", "message": f"Score entry {score_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete score entry: {str(e)}")
 
 
 @router.websocket("/ws/telemetry")

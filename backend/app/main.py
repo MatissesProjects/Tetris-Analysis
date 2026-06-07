@@ -4,12 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.api.endpoints import router as api_router
+from app.db.database import init_db
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 # Set all CORS enabled origins
 app.add_middleware(

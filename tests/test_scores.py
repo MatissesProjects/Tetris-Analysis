@@ -1,0 +1,82 @@
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.db.database import init_db, clear_scores, get_scores
+
+client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def setup_database():
+    # Make sure DB is initialized and clear before each test
+    init_db()
+    clear_scores()
+    yield
+    clear_scores()
+
+def test_scores_crud():
+    # 1. Fetch initial scores (should be empty)
+    response = client.get("/api/v1/scores")
+    assert response.status_code == 200
+    assert response.json() == []
+
+    # 2. Add a score
+    score_data = {
+        "username": "Matisse",
+        "score": 500000,
+        "pps": 2.5,
+        "apm": 45.0,
+        "finesse_faults": 10,
+        "finesse_rate": 0.92,
+        "pieces_placed": 250,
+        "lines_cleared": 100,
+        "replay_name": "match_1.ttr"
+    }
+    response = client.post("/api/v1/scores", json=score_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    score_id = response.json()["id"]
+
+    # 3. Retrieve scores again
+    response = client.get("/api/v1/scores")
+    assert response.status_code == 200
+    scores = response.json()
+    assert len(scores) == 1
+    assert scores[0]["username"] == "Matisse"
+    assert scores[0]["score"] == 500000
+    assert scores[0]["id"] == score_id
+
+    # 4. Delete the score
+    response = client.delete(f"/api/v1/scores/{score_id}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+
+    # 5. Check empty again
+    response = client.get("/api/v1/scores")
+    assert len(response.json()) == 0
+
+def test_clear_scores():
+    # Insert multiple scores
+    for i in range(3):
+        score_data = {
+            "username": f"Player_{i}",
+            "score": 100000 * (i + 1),
+            "pps": 1.5 + (0.2 * i),
+            "apm": 20.0 + (5 * i),
+            "finesse_faults": 5,
+            "finesse_rate": 0.95,
+            "pieces_placed": 120,
+            "lines_cleared": 40,
+            "replay_name": f"game_{i}.ttr"
+        }
+        client.post("/api/v1/scores", json=score_data)
+        
+    response = client.get("/api/v1/scores")
+    assert len(response.json()) == 3
+    
+    # Clear all
+    response = client.delete("/api/v1/scores/clear")
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    
+    response = client.get("/api/v1/scores")
+    assert len(response.json()) == 0

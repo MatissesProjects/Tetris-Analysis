@@ -37,3 +37,7 @@ htmlcov/
 .DS_Store
 .vscode/
 .idea/
+
+# Databases
+*.db
+
