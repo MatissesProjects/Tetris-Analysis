@@ -406,6 +406,7 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
     suggestions = TrainingSuggester.suggest_trainings(merged_stats)
     
     # Auto-save score to database history
+    score_id = None
     try:
         from app.db.database import add_score
         username = parsed_replay.get("metadata", {}).get("username") or "Player"
@@ -438,7 +439,14 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
         merged_stats["quads"] = quads
         merged_stats["clears_json"] = clears_json
         
-        add_score(
+        # New telemetry fields
+        average_planning_latency_ms = float(merged_stats.get("average_planning_latency_ms") or 0.0)
+        average_execution_latency_ms = float(merged_stats.get("average_execution_latency_ms") or 0.0)
+        double_rotations = int(merged_stats.get("double_rotations") or 0)
+        rotate180_count = int(merged_stats.get("rotate180_count") or 0)
+        kpp = float(merged_stats.get("keystrokes_per_piece") or merged_stats.get("kpp") or 0.0)
+        
+        score_id = add_score(
             username=username,
             score=score,
             pps=pps,
@@ -453,7 +461,12 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
             topbtb=topbtb,
             tspins=tspins,
             quads=quads,
-            clears_json=clears_json
+            clears_json=clears_json,
+            average_planning_latency_ms=average_planning_latency_ms,
+            average_execution_latency_ms=average_execution_latency_ms,
+            double_rotations=double_rotations,
+            rotate180_count=rotate180_count,
+            kpp=kpp
         )
     except Exception as e:
         print(f"Failed to auto-save score to history: {e}")
@@ -461,7 +474,8 @@ async def suggest_from_replay_file(file: UploadFile = File(...)):
     return {
         "metadata": parsed_replay.get("metadata", {}),
         "extracted_stats": merged_stats,
-        "suggestions": suggestions
+        "suggestions": suggestions,
+        "score_id": score_id
     }
 
 
@@ -475,6 +489,73 @@ def read_scores():
         return get_scores()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch score history: {str(e)}")
+
+
+@router.get("/scores/{score_id}", response_model=Dict[str, Any])
+def read_single_score(score_id: int):
+    """
+    Retrieve a specific score record by ID, reconstruct the replay analysis payload,
+    and generate dynamic suggestions.
+    """
+    try:
+        from app.db.database import get_db_connection
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM scores WHERE id = ?", (score_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Score record not found")
+            score_data = dict(row)
+            
+        # Reconstruct the merged_stats dict
+        clears_json = score_data.get("clears_json")
+        clears_dict = {}
+        if clears_json:
+            try:
+                clears_dict = json.loads(clears_json)
+            except Exception:
+                pass
+                
+        merged_stats = {
+            "score": score_data["score"],
+            "pps": score_data["pps"],
+            "apm": score_data["apm"],
+            "finesse_faults": score_data["finesse_faults"],
+            "finesse_rate": score_data["finesse_rate"],
+            "pieces_placed": score_data["pieces_placed"],
+            "lines": score_data["lines_cleared"],
+            "vsscore": score_data["vsscore"],
+            "topcombo": score_data["topcombo"],
+            "topbtb": score_data["topbtb"],
+            "tspins": score_data["tspins"],
+            "quads": score_data["quads"],
+            "clears": clears_dict,
+            "clears_json": clears_json,
+            "average_planning_latency_ms": score_data.get("average_planning_latency_ms") or 0.0,
+            "average_execution_latency_ms": score_data.get("average_execution_latency_ms") or 0.0,
+            "double_rotations": score_data.get("double_rotations") or 0,
+            "rotate180_count": score_data.get("rotate180_count") or 0,
+            "keystrokes_per_piece": score_data.get("kpp") or 0.0,
+            "kpp": score_data.get("kpp") or 0.0
+        }
+        
+        # Re-run the suggestion engine to get prioritized training recommendations
+        suggestions = TrainingSuggester.suggest_trainings(merged_stats)
+        
+        return {
+            "metadata": {
+                "username": score_data["username"],
+                "stats": merged_stats
+            },
+            "extracted_stats": merged_stats,
+            "suggestions": suggestions,
+            "score_id": score_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch score record: {str(e)}")
 
 
 @router.post("/scores")
