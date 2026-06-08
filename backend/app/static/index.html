@@ -643,6 +643,187 @@
             font-weight: bold;
             font-family: 'Space Grotesk', sans-serif;
         }
+
+        /* Chat & Recommendations Layout Grid */
+        .chat-recs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .chat-recs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Chat Panel Styles */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(10, 12, 22, 0.45);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            scrollbar-width: thin;
+        }
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(0, 242, 254, 0.2);
+            border-radius: 4px;
+        }
+        .chat-message {
+            max-width: 85%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            animation: messageFadeIn 0.2s ease forwards;
+            word-wrap: break-word;
+            text-align: left;
+        }
+        @keyframes messageFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.35) 0%, rgba(241, 7, 163, 0.35) 100%);
+            border: 1px solid rgba(241, 7, 163, 0.25);
+            color: var(--text-primary);
+            border-bottom-right-radius: 2px;
+        }
+        .message-aegis {
+            align-self: flex-start;
+            background: rgba(20, 24, 45, 0.85);
+            border: 1px solid rgba(0, 242, 254, 0.25);
+            color: var(--text-primary);
+            border-bottom-left-radius: 2px;
+        }
+        .chat-source-tag {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            text-align: right;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.8;
+        }
+        .chat-input-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .chat-input {
+            flex-grow: 1;
+            background: rgba(10, 12, 22, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 0.6rem 0.8rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--cyan);
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.25);
+        }
+        .chat-send-btn {
+            background: var(--cyan);
+            border: 1px solid var(--cyan);
+            color: var(--bg-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+        }
+        .chat-send-btn:hover {
+            background: #00d9e5;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.45);
+        }
+        .chat-suggested-queries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
+        }
+        .chat-query-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Outfit', sans-serif;
+        }
+        .chat-query-pill:hover {
+            background: rgba(0, 242, 254, 0.08);
+            border-color: rgba(0, 242, 254, 0.3);
+            color: var(--cyan);
+        }
+        .chat-status-pill {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .chat-status-online {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .chat-status-offline {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--orange);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .chat-typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 0.4rem 0.8rem;
+        }
+        .chat-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: chatBounce 1.4s infinite ease-in-out both;
+        }
+        .chat-dot:nth-child(1) { animation-delay: -0.32s; }
+        .chat-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes chatBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
     </style>
 </head>
 <body>
@@ -867,13 +1048,47 @@
                 </div>
             </div>
 
-            <!-- Training Recommendations Header -->
-            <div class="glass-card" style="margin-top: 1.5rem;">
-                <div class="card-header" style="margin-bottom: 1.5rem;">
-                    <h2>Prioritized Training Recommendations</h2>
+            <!-- Training & Chat Grid -->
+            <div class="chat-recs-grid">
+                <!-- Training Recommendations -->
+                <div class="glass-card" style="margin-top: 0;">
+                    <div class="card-header" style="margin-bottom: 1.5rem;">
+                        <h2>Prioritized Training Recommendations</h2>
+                    </div>
+                    <div class="recommendation-list" id="recommendationsContainer">
+                        <!-- Recommendations dynamically populated -->
+                    </div>
                 </div>
-                <div class="recommendation-list" id="recommendationsContainer">
-                    <!-- Recommendations dynamically populated -->
+
+                <!-- Aegis AI Coach Chat -->
+                <div class="glass-card" style="margin-top: 0;">
+                    <div class="card-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Aegis AI Coach</h2>
+                        <div id="chatStatus" class="chat-status-pill chat-status-online">
+                            <span style="width: 6px; height: 6px; background-color: var(--success); border-radius: 50%;"></span>
+                            Ollama Online
+                        </div>
+                    </div>
+                    
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="chat-message message-aegis">
+                                Welcome player! I am Aegis, your AI performance coach. Ask me about your speed trends, finesse errors, or details of your suggested trainings!
+                            </div>
+                        </div>
+                        
+                        <div class="chat-suggested-queries">
+                            <button class="chat-query-pill" onclick="sendSuggestedChat('What is my top training priority?')">Top Priority?</button>
+                            <button class="chat-query-pill" onclick="sendSuggestedChat('How can I improve my finesse rate?')">Improve Finesse</button>
+                            <button class="chat-query-pill" onclick="sendSuggestedChat('Why is my execution latency high?')">Execution Delay</button>
+                            <button class="chat-query-pill" onclick="sendSuggestedChat('How is my speed PPS?')">Analyze Speed</button>
+                        </div>
+                        
+                        <div class="chat-input-row">
+                            <input type="text" id="chatInput" class="chat-input" placeholder="Ask Aegis about your stats..." onkeydown="handleChatKey(event)">
+                            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">Send</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -965,6 +1180,10 @@
             if (data.score_id !== undefined) {
                 currentSelectedScoreId = data.score_id;
             }
+
+            // Save active stats for AI Coach context
+            activeReplayStats = data.extracted_stats || null;
+            chatHistory = []; // Reset chat history for the new context
 
             // Populate Metadata
             document.getElementById('playerName').textContent = data.metadata?.username || 'Unknown Player';
@@ -1112,6 +1331,8 @@
         let historyRecords = [];
         let activeMetric = 'score';
         let currentSelectedScoreId = null;
+        let activeReplayStats = null;
+        let chatHistory = [];
 
         function initChart() {
             const ctx = document.getElementById('progressionChart').getContext('2d');
@@ -1453,6 +1674,141 @@
             initChart();
             loadHistoryOnStartup();
         });
+
+        // Aegis AI Coach Chat Functionality
+        function handleChatKey(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+
+        function sendSuggestedChat(text) {
+            document.getElementById('chatInput').value = text;
+            sendChatMessage();
+        }
+
+        function appendChatMessage(sender, text) {
+            const chatMessages = document.getElementById('chatMessages');
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('chat-message');
+            msgDiv.classList.add(sender === 'user' ? 'message-user' : 'message-aegis');
+            
+            // Format markdown/bullets simply
+            let formattedText = escapeHtml(text)
+                .replace(/\n/g, '<br>')
+                .replace(/• (.*?)(<br>|$)/g, '<li>$1</li>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+            if (formattedText.includes('<li>')) {
+                formattedText = formattedText.replace(/(<li>.*?<\/li>)/g, '<ul>$1</ul>');
+            }
+            
+            msgDiv.innerHTML = formattedText;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const chatMessages = document.getElementById('chatMessages');
+            
+            const messageText = chatInput.value.trim();
+            if (!messageText) return;
+            
+            // Append User message
+            appendChatMessage('user', messageText);
+            chatInput.value = '';
+            
+            // Disable inputs during inference
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+            
+            // Append typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'chatTyping';
+            typingDiv.classList.add('chat-message', 'message-aegis');
+            typingDiv.innerHTML = `
+                <div class="chat-typing-indicator">
+                    <span class="chat-dot"></span>
+                    <span class="chat-dot"></span>
+                    <span class="chat-dot"></span>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Call API
+            fetch('/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: messageText,
+                    history: chatHistory,
+                    current_stats: activeReplayStats
+                })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+            })
+            .then(data => {
+                // Remove typing indicator
+                const typing = document.getElementById('chatTyping');
+                if (typing) typing.remove();
+                
+                // Append response
+                appendChatMessage('aegis', data.advice);
+                
+                // Add source tag
+                const sourceDiv = document.createElement('div');
+                sourceDiv.classList.add('chat-source-tag');
+                sourceDiv.textContent = `Response from ${data.source}`;
+                chatMessages.appendChild(sourceDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Update status pill based on source
+                const statusPill = document.getElementById('chatStatus');
+                if (data.source.includes('Offline') || data.source.includes('Fallback')) {
+                    statusPill.className = 'chat-status-pill chat-status-offline';
+                    statusPill.innerHTML = `
+                        <span style="width: 6px; height: 6px; background-color: var(--orange); border-radius: 50%;"></span>
+                        Ollama Offline
+                    `;
+                } else {
+                    statusPill.className = 'chat-status-pill chat-status-online';
+                    statusPill.innerHTML = `
+                        <span style="width: 6px; height: 6px; background-color: var(--success); border-radius: 50%;"></span>
+                        Ollama Online
+                    `;
+                }
+                
+                // Save to history
+                chatHistory.push({ role: 'user', content: messageText });
+                chatHistory.push({ role: 'assistant', content: data.advice });
+            })
+            .catch(err => {
+                console.error(err);
+                const typing = document.getElementById('chatTyping');
+                if (typing) typing.remove();
+                
+                appendChatMessage('aegis', 'I encountered an error connecting to the Aegis server. Please check your connection.');
+                
+                const statusPill = document.getElementById('chatStatus');
+                statusPill.className = 'chat-status-pill chat-status-offline';
+                statusPill.innerHTML = `
+                    <span style="width: 6px; height: 6px; background-color: var(--orange); border-radius: 50%;"></span>
+                    Server Error
+                `;
+            })
+            .finally(() => {
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            });
+        }
 
         function escapeHtml(text) {
             return text
