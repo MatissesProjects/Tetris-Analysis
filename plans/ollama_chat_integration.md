@@ -40,7 +40,7 @@ A new class method or instance method will be added to `OllamaClient`:
 * **Interactivity:** Pre-filled suggested questions (e.g., *"What is my main training priority?"*, *"How is my finesse progress?"*).
 
 ## 5. Development Steps
-1. **Extend `OllamaClient`** in `backend/app/core/ollama_client.py` with generic chat and context assembly.
-2. **Add `/chat` endpoint** in `backend/app/api/endpoints.py`.
-3. **Integrate the Chat UI** into `backend/app/static/index.html`.
-4. **Test the integration** with and without Ollama active.
+1. **[COMPLETE] Extend `OllamaClient`** in `backend/app/core/ollama_client.py` with generic chat and context assembly.
+2. **[COMPLETE] Add `/chat` endpoint** in `backend/app/api/endpoints.py`.
+3. **[COMPLETE] Integrate the Chat UI** into `backend/app/static/index.html`.
+4. **[COMPLETE] Test the integration** with and without Ollama active.
