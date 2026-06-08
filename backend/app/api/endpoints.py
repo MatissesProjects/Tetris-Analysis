@@ -617,6 +617,47 @@ def delete_score_entry(score_id: int):
         raise HTTPException(status_code=500, detail=f"Failed to delete score entry: {str(e)}")
 
 
+class ChatPayload(BaseModel):
+    message: str = Field(..., description="The user query to the AI Coach")
+    history: List[Dict[str, str]] = Field([], description="Chat history as a list of role/content pairs")
+    current_stats: Optional[Dict[str, Any]] = Field(None, description="Stats of the currently loaded replay, if any")
+
+
+@router.post("/chat")
+def chat_coaching(payload: ChatPayload):
+    """
+    Handle chat conversation between player and Aegis AI coach.
+    Injects database scores history and recent replay analysis suggestions into the prompt.
+    """
+    try:
+        from app.db.database import get_scores
+        all_scores = get_scores()
+        
+        # Calculate suggestions if current stats are provided
+        suggestions = None
+        if payload.current_stats:
+            stats_dict = {k: v for k, v in payload.current_stats.items() if v is not None}
+            suggestions = TrainingSuggester.suggest_trainings(stats_dict)
+        elif all_scores:
+            # Fallback to computing suggestions on the latest stats from database
+            latest_run = all_scores[-1]
+            suggestions = TrainingSuggester.suggest_trainings(latest_run)
+            
+        result = ollama_client.query_chat_coaching(
+            user_message=payload.message,
+            history=payload.history,
+            current_stats=payload.current_stats,
+            all_scores=all_scores,
+            suggestions=suggestions
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during chat routing: {str(e)}"
+        )
+
+
 @router.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     """

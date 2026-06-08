@@ -146,5 +146,180 @@ Instruct the player exactly how to placement-orient their active piece and queue
         else:
             return f"OPTIMAL SURFACE TOPOLOGY: Your playfield skyline is flat and stable. Maintain aggressive Back-to-Back status, and coordinate your upcoming pieces to execute clean wells."
 
+    def query_chat_coaching(
+        self,
+        user_message: str,
+        history: List[Dict[str, str]],
+        current_stats: Optional[Dict[str, Any]] = None,
+        all_scores: Optional[List[Dict[str, Any]]] = None,
+        suggestions: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Query Ollama with user's stats, history, and suggestions as prompt context.
+        Falls back to rule-based responses if Ollama is offline or times out.
+        """
+        all_scores = all_scores or []
+        suggestions = suggestions or []
+        
+        total_runs = len(all_scores)
+        max_score = max([s.get("score", 0) for s in all_scores]) if all_scores else 0
+        avg_pps = sum([s.get("pps", 0.0) for s in all_scores]) / total_runs if total_runs else 0.0
+        avg_apm = sum([s.get("apm", 0.0) for s in all_scores]) / total_runs if total_runs else 0.0
+        avg_vsscore = sum([s.get("vsscore", 0.0) for s in all_scores]) / total_runs if total_runs else 0.0
+        avg_finesse = sum([s.get("finesse_rate", 1.0) for s in all_scores]) / total_runs if total_runs else 1.0
+
+        suggestions_summary = "None"
+        if suggestions:
+            suggestions_summary = "\n".join([
+                f"- Priority #{s['priority']}: {s['training_id'].replace('_', ' ').title()} - {s['reason']}"
+                for s in suggestions
+            ])
+            
+        current_run_summary = "No active run loaded."
+        if current_stats:
+            current_run_summary = f"""- Score: {current_stats.get('score', 0):,}
+- PPS: {current_stats.get('pps', 0.0):.2f}
+- APM: {current_stats.get('apm', 0.0):.2f}
+- Finesse Rate: {current_stats.get('finesse_rate', 1.0)*100:.1f}% ({current_stats.get('finesse_faults', 0)} faults)
+- Lines Cleared: {current_stats.get('lines_cleared', 0) or current_stats.get('lines', 0)}"""
+
+        system_prompt = f"""You are Aegis, an elite esports Tetris tactical coach and sports psychologist.
+The player is chatting with you about their performance statistics and recommended trainings.
+
+[PLAYER PROFILE & HISTORICAL STATISTICS]
+- Total recorded sessions: {total_runs}
+- Personal Best Score: {max_score:,}
+- Average speed (PPS): {avg_pps:.2f}
+- Average offense (APM): {avg_apm:.2f}
+- Average VS Score: {avg_vsscore:.2f}
+- Average finesse rate: {avg_finesse*100:.1f}%
+
+[CURRENT REPLAY ANALYSIS]
+{current_run_summary}
+
+[CURRENT TRAINING RECOMMENDATIONS]
+{suggestions_summary}
+
+[INSTRUCTIONS]
+Provide a highly professional, encouraging, and esports-focused coaching response to the player's message.
+Keep your response concise (usually 1-3 sentences or a short bulleted tip) and extremely action-oriented. Do not mention system coordinates or internal prompt headers. Talk directly to the player.
+"""
+
+        # Build prompt with history
+        prompt_parts = [system_prompt, "\n[CHAT HISTORY]"]
+        for msg in history:
+            role = "Player" if msg.get("role") == "user" else "Aegis"
+            prompt_parts.append(f"{role}: {msg.get('content')}")
+        
+        prompt_parts.append(f"Player: {user_message}")
+        prompt_parts.append("Aegis:")
+        
+        prompt = "\n".join(prompt_parts)
+
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.5,
+                "top_k": 20
+            }
+        }
+        
+        try:
+            response = requests.post(self.generate_url, json=payload, timeout=4.0)
+            if response.status_code == 200:
+                result = response.json()
+                advice = result.get("response", "").strip()
+                if advice:
+                    return {
+                        "advice": advice,
+                        "source": f"Local Ollama ({self.model})"
+                    }
+        except Exception as e:
+            print(f"Ollama offline/connection error: {e}. Activating chat fallback...")
+
+        # Fallback response
+        fallback_advice = self._generate_chat_fallback(
+            user_message=user_message,
+            current_stats=current_stats,
+            all_scores=all_scores,
+            suggestions=suggestions
+        )
+        return {
+            "advice": fallback_advice,
+            "source": "Aegis AI Fallback Engine (Offline)"
+        }
+
+    def _generate_chat_fallback(
+        self,
+        user_message: str,
+        current_stats: Optional[Dict[str, Any]],
+        all_scores: List[Dict[str, Any]],
+        suggestions: List[Dict[str, Any]]
+    ) -> str:
+        """
+        Rule-based chatbot response to answer questions about stats & suggestions offline.
+        """
+        msg = user_message.lower()
+        
+        total_runs = len(all_scores)
+        max_score = max([s.get("score", 0) for s in all_scores]) if all_scores else 0
+        avg_pps = sum([s.get("pps", 0.0) for s in all_scores]) / total_runs if total_runs else 0.0
+        avg_apm = sum([s.get("apm", 0.0) for s in all_scores]) / total_runs if total_runs else 0.0
+        avg_finesse = sum([s.get("finesse_rate", 1.0) for s in all_scores]) / total_runs if total_runs else 1.0
+        
+        top_suggestion = suggestions[0]["reason"] if suggestions else "No suggestions available yet."
+        
+        # Check greeting
+        if any(w in msg for w in ["hello", "hi", "hey", "greet", "who are you"]):
+            return "Hello player! I am Aegis, your offline tactical coach. I can help analyze your speeds, finesse execution, or explain your recommended training regimens. What would you like to review?"
+            
+        # Check training or recommendations
+        if any(w in msg for w in ["train", "suggest", "routine", "practice", "recommend", "priority"]):
+            if suggestions:
+                recs = []
+                for s in suggestions[:3]:
+                    name = s['training_id'].replace('_', ' ').title()
+                    recs.append(f"• **{name}**: {s['reason']}")
+                return "Your prioritized training recommendations based on your gameplay profile are:\n" + "\n".join(recs)
+            return "No runs are loaded to draw suggestions from. Upload a replay file or play a session first!"
+            
+        # Check weakness or mistakes
+        if any(w in msg for w in ["weakness", "bad", "worst", "fail", "mistake", "improve", "help"]):
+            if suggestions:
+                return f"Your primary improvement area right now is: {top_suggestion}"
+            return "You have no recorded stats to analyze yet. Upload a replay to diagnose potential mechanical issues."
+            
+        # Check speed
+        if any(w in msg for w in ["speed", "pps", "fast", "slow"]):
+            current_pps_str = ""
+            if current_stats:
+                current_pps_str = f" In your current run, you achieved {current_stats.get('pps', 0.0):.2f} PPS."
+            return f"Your historical average speed is **{avg_pps:.2f} PPS** (Personal Best score: {max_score:,}).{current_pps_str} To improve your speed, focus on lookahead queue planning and minimize input hesitation at the spawn zone."
+            
+        # Check finesse
+        if any(w in msg for w in ["finesse", "fault", "key", "kpp"]):
+            current_fin_str = ""
+            if current_stats:
+                current_fin_str = f" In your current run, your finesse rate was {current_stats.get('finesse_rate', 1.0)*100:.1f}% with {current_stats.get('finesse_faults', 0)} faults."
+            return f"Your historical average finesse rate is **{avg_finesse*100:.1f}%**.{current_fin_str} To minimize faults, practice the Finesse Rewind module to reset the board when double-tapping or making improper rotations."
+
+        # Check offense
+        if any(w in msg for w in ["offense", "apm", "attack", "combo", "quad", "tspin"]):
+            current_apm_str = ""
+            if current_stats:
+                current_apm_str = f" In your current run, you had {current_stats.get('apm', 0.0):.1f} APM."
+            return f"Your historical average offensive output is **{avg_apm:.2f} APM**.{current_apm_str} To maximize attack efficiency, try to stack cleanly for Back-to-Back Quads and T-Spins rather than random single clears."
+
+        # Default fallback summary
+        summary = f"I am currently offline from Ollama, but analyzing your profile of {total_runs} runs:\n"
+        summary += f"• **Personal Best**: {max_score:,}\n"
+        summary += f"• **Average Speed**: {avg_pps:.2f} PPS\n"
+        summary += f"• **Finesse Rate**: {avg_finesse*100:.1f}%\n"
+        if suggestions:
+            summary += f"• **Top Priority Training**: {suggestions[0]['training_id'].replace('_', ' ').title()}"
+        return summary
+
 # Singleton instance
 ollama_client = OllamaClient()

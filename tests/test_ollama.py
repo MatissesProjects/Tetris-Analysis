@@ -120,3 +120,61 @@ def test_ollama_http_timeout_fallback(mock_post):
     # Assert fallback is fully operational
     assert "OPTIMAL SURFACE TOPOLOGY" in result["advice"]
     assert "Fallback" in result["source"]
+
+
+def test_chat_coaching_fallback():
+    """Verify rule-based chat fallback responses work offline."""
+    client = OllamaClient()
+    
+    # Test greeting
+    res_greet = client.query_chat_coaching(
+        user_message="Hello!",
+        history=[],
+        current_stats=None,
+        all_scores=[],
+        suggestions=[]
+    )
+    assert "Hello player!" in res_greet["advice"]
+    assert "Fallback" in res_greet["source"]
+    
+    # Test speed query
+    res_speed = client.query_chat_coaching(
+        user_message="how is my speed?",
+        history=[],
+        current_stats={"pps": 1.4, "score": 1000},
+        all_scores=[{"pps": 1.5, "score": 1200}],
+        suggestions=[]
+    )
+    assert "speed" in res_speed["advice"]
+    assert "1.50" in res_speed["advice"]
+
+    # Test training query
+    res_train = client.query_chat_coaching(
+        user_message="recommend a training",
+        history=[],
+        current_stats=None,
+        all_scores=[],
+        suggestions=[{"training_id": "finesse_rewind", "priority": 1, "reason": "High finesse error rate"}]
+    )
+    assert "Finesse Rewind" in res_train["advice"]
+
+
+@patch("requests.post")
+def test_chat_coaching_success(mock_post):
+    """Verify standard response when Ollama client successfully responds to chat."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"response": "Aegis: Your finesse execution needs serious work. Focus on ARR."}
+    mock_post.return_value = mock_resp
+    
+    client = OllamaClient()
+    result = client.query_chat_coaching(
+        user_message="What should I work on?",
+        history=[],
+        current_stats=None,
+        all_scores=[],
+        suggestions=[]
+    )
+    
+    assert "work on" in result["advice"].lower() or "finesse" in result["advice"].lower()
+    assert "Local Ollama" in result["source"]
