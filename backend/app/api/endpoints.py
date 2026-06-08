@@ -494,8 +494,8 @@ def read_scores():
 @router.get("/scores/{score_id}", response_model=Dict[str, Any])
 def read_single_score(score_id: int):
     """
-    Retrieve a specific score record by ID, reconstruct the replay analysis payload,
-    and generate dynamic suggestions.
+    Retrieve a specific score record by ID. Checks if the original replay file is in the Downloads
+    directory to load it dynamically; otherwise falls back to the database record.
     """
     try:
         from app.db.database import get_db_connection
@@ -507,7 +507,63 @@ def read_single_score(score_id: int):
                 raise HTTPException(status_code=404, detail="Score record not found")
             score_data = dict(row)
             
-        # Reconstruct the merged_stats dict
+        replay_name = score_data.get("replay_name")
+        if replay_name:
+            import os
+            downloads_dir = os.path.expanduser("~/Downloads")
+            file_path = os.path.join(downloads_dir, replay_name)
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        replay_data = json.load(f)
+                    
+                    parsed_replay = TTRParser.parse_replay(replay_data)
+                    meta_stats = parsed_replay.get("metadata", {}).get("stats", {}) or {}
+                    events = parsed_replay.get("events", [])
+                    event_stats = TrainingSuggester.parse_events_for_stats(events)
+                    
+                    merged_stats = {**event_stats, **meta_stats}
+                    
+                    pieces = int(merged_stats.get("pieces_placed") or merged_stats.get("pieces") or 0)
+                    perfect_pieces = merged_stats.get("finesse_perfect_pieces")
+                    if perfect_pieces is not None:
+                        perfect_pieces = int(perfect_pieces)
+                    else:
+                        faults = int(merged_stats.get("finesse_faults") or 0)
+                        perfect_pieces = max(0, pieces - faults)
+                        
+                    finesse_rate = 1.0
+                    if pieces > 0:
+                        finesse_rate = max(0.0, min(1.0, perfect_pieces / pieces))
+                    merged_stats["finesse_rate"] = round(finesse_rate, 4)
+                    
+                    suggestions = TrainingSuggester.suggest_trainings(merged_stats)
+                    
+                    # Fill other fields that might be missing or calculated
+                    vsscore = merged_stats.get("vsscore")
+                    if vsscore is None:
+                        apm = float(merged_stats.get("apm") or 0.0)
+                        pps = float(merged_stats.get("pps") or 0.0)
+                        vsscore = apm + pps * 20
+                    merged_stats["vsscore"] = round(float(vsscore), 2)
+                    
+                    clears_dict = merged_stats.get("clears") or {}
+                    merged_stats["topcombo"] = int(merged_stats.get("topcombo") or 0)
+                    merged_stats["topbtb"] = int(merged_stats.get("topbtb") or 0)
+                    merged_stats["tspins"] = int(merged_stats.get("tspins") or 0)
+                    merged_stats["quads"] = int(clears_dict.get("quads") or 0)
+                    merged_stats["clears_json"] = json.dumps(clears_dict) if clears_dict else None
+                    
+                    return {
+                        "metadata": parsed_replay.get("metadata", {}),
+                        "extracted_stats": merged_stats,
+                        "suggestions": suggestions,
+                        "score_id": score_id
+                    }
+                except Exception as e:
+                    print(f"Failed to parse replay file from Downloads: {e}")
+            
+        # Reconstruct from the database record (Fallback)
         clears_json = score_data.get("clears_json")
         clears_dict = {}
         if clears_json:

@@ -122,8 +122,10 @@ def test_ollama_http_timeout_fallback(mock_post):
     assert "Fallback" in result["source"]
 
 
-def test_chat_coaching_fallback():
+@patch("requests.post")
+def test_chat_coaching_fallback(mock_post):
     """Verify rule-based chat fallback responses work offline."""
+    mock_post.side_effect = Exception("Connection timed out")
     client = OllamaClient()
     
     # Test greeting

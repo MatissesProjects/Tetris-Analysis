@@ -136,7 +136,7 @@ def test_get_single_score():
     assert post_res.status_code == 200
     score_id = post_res.json()["id"]
 
-    # 2. Get the single score
+    # 2. Get the single score (no file in Downloads, should use DB fallback)
     get_res = client.get(f"/api/v1/scores/{score_id}")
     assert get_res.status_code == 200
     res_data = get_res.json()
@@ -149,6 +149,54 @@ def test_get_single_score():
     assert "suggestions" in res_data
     assert len(res_data["suggestions"]) > 0
 
-    # 3. Request a non-existent score ID
+    # 3. Write a mock replay file to Downloads to test dynamic parsing path
+    import os
+    import json
+    downloads_dir = os.path.expanduser("~/Downloads")
+    os.makedirs(downloads_dir, exist_ok=True)
+    temp_file_path = os.path.join(downloads_dir, "match_1.ttr")
+    
+    mock_replay_content = {
+        "data": {
+            "user": {
+                "username": "MatisseDynamic"
+            },
+            "stats": {
+                "score": 125000,
+                "pps": 2.1,
+                "apm": 32.5,
+                "lines": 40
+            },
+            "game": {
+                "seed": 12345
+            },
+            "events": [
+                {"frame": 10, "type": "keydown", "data": {"key": "moveLeft", "subframe": 0.2}},
+                {"frame": 12, "type": "keyup", "data": {"key": "moveLeft", "subframe": 0.8}},
+                {"frame": 20, "type": "keydown", "data": {"key": "hardDrop", "subframe": 0.0}}
+            ]
+        }
+    }
+    
+    try:
+        with open(temp_file_path, "w", encoding="utf-8") as f:
+            json.dump(mock_replay_content, f)
+            
+        # 4. Fetch the score again (should parse file dynamically)
+        get_dynamic_res = client.get(f"/api/v1/scores/{score_id}")
+        assert get_dynamic_res.status_code == 200
+        dynamic_data = get_dynamic_res.json()
+        
+        assert dynamic_data["score_id"] == score_id
+        assert dynamic_data["metadata"]["username"] == "MatisseDynamic"
+        assert dynamic_data["extracted_stats"]["score"] == 125000
+        assert dynamic_data["extracted_stats"]["pps"] == 2.1
+        assert dynamic_data["extracted_stats"]["apm"] == 32.5
+        
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+    # 5. Request a non-existent score ID
     failed_res = client.get("/api/v1/scores/99999")
     assert failed_res.status_code == 404

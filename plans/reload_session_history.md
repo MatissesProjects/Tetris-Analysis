@@ -21,11 +21,17 @@ Update `backend/app/db/database.py`:
 Update `backend/app/api/endpoints.py`:
 1. Modify the `suggest_from_replay_file` endpoint to extract and pass the additional columns to `add_score()`.
 2. Return the new `score_id` (retrieved from `add_score`) in the response of `suggest_from_replay_file`.
-3. Implement a new endpoint: `GET /api/v1/scores/{score_id}`:
+3. Implement/update `GET /api/v1/scores/{score_id}`:
    * Fetch the score row by ID from the database.
    * If not found, return 404.
-   * Parse the stats, reconstruct the payload structure (metadata, extracted_stats), and generate suggestions dynamically via `TrainingSuggester.suggest_trainings(stats)`.
-   * Return the formatted response (exactly matching the structure returned by `/trainings/suggest-from-replay`).
+   * Check if `replay_name` is present. If so, check if the file exists under the user's `~/Downloads/` directory.
+   * **If file exists in Downloads:**
+     * Read and parse the file dynamically using `TTRParser.parse_replay()`.
+     * Extract stats and suggestions.
+     * Return the full parsed replay payload.
+   * **If file does not exist in Downloads (Fallback):**
+     * Parse the stats from the database row, reconstruct the payload structure (metadata, extracted_stats), and generate suggestions dynamically via `TrainingSuggester.suggest_trainings(stats)`.
+     * Return the formatted response (matching the structure returned by `/trainings/suggest-from-replay`).
 
 ## 3. Frontend Integration
 Update `backend/app/static/index.html`:

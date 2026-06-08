@@ -8,8 +8,39 @@ class OllamaClient:
     """
     def __init__(self, base_url: str = "http://localhost:11434", model: str = "gemma:26b"):
         self.base_url = base_url
-        self.model = model
         self.generate_url = f"{base_url}/api/generate"
+        self.model = self._detect_best_model(default_model=model)
+
+    def _detect_best_model(self, default_model: str) -> str:
+        try:
+            tags_url = f"{self.base_url}/api/tags"
+            response = requests.get(tags_url, timeout=2.0)
+            if response.status_code == 200:
+                available_models = [m.get("name") for m in response.json().get("models", [])]
+                
+                # Check preferred list of models in order of capability/preference
+                preferred = [
+                    "gemma4:26b",
+                    "gemma4:26b-a4b-it-q4_K_M",
+                    default_model,
+                    "gemma4:latest",
+                    "gemma4:e4b",
+                    "gemma3:4b",
+                    "qwen3:8b"
+                ]
+                for p_model in preferred:
+                    if p_model in available_models:
+                        print(f"OllamaClient: detected and selected model '{p_model}'")
+                        return p_model
+                
+                # Fallback to the first available model if none of preferred models match
+                if available_models:
+                    print(f"OllamaClient: fallback to first available model '{available_models[0]}'")
+                    return available_models[0]
+        except Exception as e:
+            print(f"OllamaClient: failed to detect local models (Ollama offline/connection error: {e})")
+        
+        return default_model
 
     def compile_spatial_prompt(
         self,
